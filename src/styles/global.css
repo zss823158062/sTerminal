@@ -1,0 +1,163 @@
+/* sTerminal 全局深色主题变量 */
+:root {
+  /* 背景色 */
+  --bg-app: #1a1a1a;
+  --bg-panel: #0d0d0d;
+  --bg-panel-header: #1e1e1e;
+  --bg-titlebar: #141414;
+  --bg-overlay: rgba(0, 0, 0, 0.8);
+
+  /* 边框与分割线 */
+  --border: #333;
+  --border-active: #555;
+  --split-handle: #333;
+  --split-handle-hover: #555;
+  --split-handle-width: 4px;
+
+  /* 文字颜色 */
+  --text-primary: #e0e0e0;
+  --text-secondary: #999;
+  --text-muted: #666;
+  --text-accent: #60a5fa;
+
+  /* 交互状态 */
+  --hover-overlay: rgba(255, 255, 255, 0.05);
+  --active-overlay: rgba(255, 255, 255, 0.1);
+  --focus-ring: #3b82f6;
+
+  /* 状态颜色 */
+  --color-success: #4ade80;
+  --color-warning: #facc15;
+  --color-error: #f87171;
+  --color-info: #60a5fa;
+
+  /* 按钮 */
+  --btn-bg: #2a2a2a;
+  --btn-bg-hover: #383838;
+  --btn-bg-danger: #7f1d1d;
+  --btn-bg-danger-hover: #991b1b;
+
+  /* 字体 */
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas,
+    "Courier New", monospace;
+
+  /* 尺寸 */
+  --titlebar-height: 36px;
+  --panel-header-height: 32px;
+  --panel-min-size: 80px;
+
+  /* 圆角 */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* 动画 */
+  --transition-fast: 100ms ease;
+  --transition-normal: 200ms ease;
+}
+
+/* CSS Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 禁止图片拖拽 */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* 滚动条样式（深色主题） */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-active);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #777;
+}
+
+/* 按钮基础样式 */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--btn-bg);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  outline: none;
+}
+
+button:hover {
+  background: var(--btn-bg-hover);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 输入框基础样式 */
+input,
+textarea {
+  background: #2a2a2a;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--focus-ring);
+}

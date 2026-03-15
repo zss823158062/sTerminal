@@ -1,0 +1,37 @@
+[package]
+name = "s-terminal"
+version = "0.1.0"
+description = "sTerminal - 多面板本地终端模拟器"
+authors = ["sTerminal Team"]
+license = "MIT"
+repository = ""
+default-run = "s-terminal"
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "s_terminal_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[[bin]]
+name = "s-terminal"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+tokio = { version = "1", features = ["full"] }
+portable-pty = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+
+[features]
+# This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
+custom-protocol = ["tauri/custom-protocol"]
