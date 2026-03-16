@@ -1,0 +1,141 @@
+/* 标签栏 */
+.tabbar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  background: var(--bg-panel-header);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+  overflow: hidden;
+  padding: 0 4px;
+  gap: 1px;
+}
+
+/* 标签滚动区域 */
+.tabbar__tabs {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.tabbar__tabs::-webkit-scrollbar {
+  height: 0;
+}
+
+/* 单个标签 */
+.tabbar__tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  position: relative;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tabbar__tab:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* 激活态 */
+.tabbar__tab--active {
+  color: var(--text-primary);
+  background: var(--bg-panel);
+}
+
+.tabbar__tab--active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  background: var(--focus-ring);
+  border-radius: 1px;
+}
+
+/* 标签名称 */
+.tabbar__tab-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 编辑态输入框 */
+.tabbar__tab-input {
+  width: 100px;
+  height: 20px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  border-bottom: 1px solid var(--focus-ring);
+  border-radius: 0;
+}
+
+/* 标签关闭按钮 */
+.tabbar__tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+
+.tabbar__tab:hover .tabbar__tab-close {
+  opacity: 1;
+}
+
+.tabbar__tab-close:hover {
+  background: var(--btn-bg-danger);
+  color: #fff;
+}
+
+/* 新建按钮 */
+.tabbar__add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.tabbar__add-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}

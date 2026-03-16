@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, type RefObject } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { listen } from "@tauri-apps/api/event";
 import { terminalCreate, terminalWrite, terminalResize, terminalKill } from "../ipc/terminalApi";
@@ -19,6 +20,8 @@ interface UseTerminalReturn {
   isAlive: boolean;
   exitCode: number | undefined;
   restart: () => void;
+  copySelection: () => void;
+  pasteFromClipboard: () => void;
 }
 
 export function useTerminal({
@@ -40,6 +43,28 @@ export function useTerminal({
     setIsAlive(true);
     setExitCode(undefined);
     setRestartKey((k) => k + 1);
+  }, []);
+
+  const copySelection = useCallback(() => {
+    const term = terminalRef.current;
+    if (!term) return;
+    const selection = term.getSelection();
+    if (selection) {
+      navigator.clipboard.writeText(selection).catch(console.error);
+    }
+  }, []);
+
+  const pasteFromClipboard = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+      const id = terminalIdRef.current;
+      if (id) {
+        terminalWrite(id, new TextEncoder().encode(text)).catch(console.error);
+      }
+    } catch (err) {
+      console.error("[useTerminal] Paste failed:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -89,6 +114,22 @@ export function useTerminal({
     // ---- 3. open terminal 到 DOM ----
     term.open(container);
 
+    // ---- 3.5. 拦截 Ctrl+Shift+C/V 用于复制粘贴 ----
+    term.attachCustomKeyEventHandler((event) => {
+      if (event.type !== "keydown") return true;
+      if (event.ctrlKey && event.shiftKey) {
+        if (event.code === "KeyC") {
+          copySelection();
+          return false;
+        }
+        if (event.code === "KeyV") {
+          pasteFromClipboard();
+          return false;
+        }
+      }
+      return true;
+    });
+
     // ---- 4. 尝试 WebglAddon，失败降级 Canvas ----
     try {
       const webglAddon = new WebglAddon();
@@ -100,8 +141,10 @@ export function useTerminal({
       // WebGL 不可用，xterm 自动使用 Canvas renderer
     }
 
-    // ---- 5. 初始 fit ----
-    fitAddon.fit();
+    // ---- 5. 初始 fit（延迟到浏览器完成布局后执行）----
+    requestAnimationFrame(() => {
+      try { fitAddon.fit(); } catch (_e) { /* 容器不可见时忽略 */ }
+    });
 
     // ---- 6. 调用后端创建 PTY ----
     let unlistenOutput: (() => void) | undefined;
@@ -195,5 +238,7 @@ export function useTerminal({
     isAlive,
     exitCode,
     restart,
+    copySelection,
+    pasteFromClipboard,
   };
 }

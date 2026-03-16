@@ -2,7 +2,7 @@
  * 运行时面板状态（仅存在于内存，不持久化）
  */
 export interface PanelState {
-  /** 面板唯一 ID，与 TerminalLeaf.id 保持一致 */
+  /** 终端会话唯一 ID，与 TerminalSession.id 保持一致 */
   id: string;
   /**
    * 由 Rust 后端 terminal_create 返回的终端 ID
@@ -13,7 +13,7 @@ export interface PanelState {
   pid: number;
   /**
    * 终端实时工作目录
-   * 通过 terminal_get_cwd 查询更新，初始值为 TerminalLeaf.workingDirectory
+   * 通过 terminal_get_cwd 查询更新，初始值为 TerminalSession.workingDirectory
    */
   currentWorkingDirectory: string;
   /** PTY 进程是否存活；false 时显示"进程已退出"提示 */

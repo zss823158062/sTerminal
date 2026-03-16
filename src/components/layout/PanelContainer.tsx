@@ -58,11 +58,7 @@ export function PanelContainer({ node, children }: PanelContainerProps) {
         <div style={placeholderStyle}>
           <span style={{ color: "var(--text-secondary)" }}>Panel</span>
           <span>{node.id.slice(0, 8)}</span>
-          {node.shellType && node.shellType !== "default" && (
-            <span style={{ color: "var(--text-accent)" }}>
-              {node.shellType}
-            </span>
-          )}
+          <span>{node.tabs.length} tab(s)</span>
         </div>
       )}
     </div>

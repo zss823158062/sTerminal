@@ -43,6 +43,19 @@ impl PtyManager {
     ) -> Result<String, String> {
         let terminal_id = uuid::Uuid::new_v4().to_string();
 
+        // shell_path 为空时自动检测系统默认 Shell
+        let effective_shell = if shell_path.is_empty() {
+            let shells = crate::shell::detector::detect_available_shells()?;
+            shells
+                .iter()
+                .find(|s| s.is_default)
+                .or(shells.first())
+                .map(|s| s.path.clone())
+                .ok_or_else(|| "No available shell found on this system".to_string())?
+        } else {
+            shell_path
+        };
+
         // 验证工作目录是否存在，不存在时回退到 Home 目录
         let effective_dir = if std::path::Path::new(&working_directory).exists() {
             working_directory
@@ -52,7 +65,7 @@ impl PtyManager {
 
         let process = PtyProcess::new(
             terminal_id.clone(),
-            shell_path,
+            effective_shell,
             effective_dir,
             cols,
             rows,

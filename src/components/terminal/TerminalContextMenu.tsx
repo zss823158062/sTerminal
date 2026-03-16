@@ -8,6 +8,8 @@ interface ContextMenuPosition {
 interface TerminalContextMenuProps {
   position: ContextMenuPosition;
   isLastPanel: boolean;
+  onCopy: () => void;
+  onPaste: () => void;
   onSplitHorizontal: () => void;
   onSplitVertical: () => void;
   onDuplicate: () => void;
@@ -18,6 +20,8 @@ interface TerminalContextMenuProps {
 export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
   position,
   isLastPanel,
+  onCopy,
+  onPaste,
   onSplitHorizontal,
   onSplitVertical,
   onDuplicate,
@@ -66,6 +70,21 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
       style={style}
       onContextMenu={(e) => e.preventDefault()}
     >
+      <button
+        className="terminal-context-menu__item"
+        onClick={() => handleAction(onCopy)}
+      >
+        <span>复制</span>
+        <span className="terminal-context-menu__shortcut">Ctrl+Shift+C</span>
+      </button>
+      <button
+        className="terminal-context-menu__item"
+        onClick={() => handleAction(onPaste)}
+      >
+        <span>粘贴</span>
+        <span className="terminal-context-menu__shortcut">Ctrl+Shift+V</span>
+      </button>
+      <div className="terminal-context-menu__separator" />
       <button
         className="terminal-context-menu__item"
         onClick={() => handleAction(onSplitHorizontal)}

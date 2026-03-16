@@ -1,10 +1,8 @@
 /**
- * 叶子节点：代表一个真实的终端面板
+ * 单个终端会话
  */
-export interface TerminalLeaf {
-  /** 节点类型标识符，固定为 'terminal' */
-  type: "terminal";
-  /** 面板唯一 ID，UUID v4 格式，在整个应用生命周期内不重复 */
+export interface TerminalSession {
+  /** 会话唯一 ID，UUID v4 格式 */
   id: string;
   /** Shell 类型标识符，如 'powershell' | 'cmd' | 'bash' | 'zsh' | 'fish' */
   shellType: string;
@@ -12,6 +10,22 @@ export interface TerminalLeaf {
   shellPath: string;
   /** 初始工作目录的绝对路径；加载布局时若目录不存在则回退到 Home 目录 */
   workingDirectory: string;
+  /** 标签页显示名称，如 "控制台 1" */
+  name?: string;
+}
+
+/**
+ * 叶子节点 = Tab 组，包含 1+ 个终端会话，同一时间只显示一个
+ */
+export interface TerminalLeaf {
+  /** 节点类型标识符，固定为 'terminal' */
+  type: "terminal";
+  /** 面板（组）唯一 ID，用于在布局树中定位 */
+  id: string;
+  /** 所有终端会话 */
+  tabs: TerminalSession[];
+  /** 当前激活的 tab ID */
+  activeTabId: string;
 }
 
 /**

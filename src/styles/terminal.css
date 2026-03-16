@@ -1,7 +1,8 @@
 /* xterm.js 容器样式 */
 .terminal-pane {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -181,6 +182,13 @@
 
 .terminal-context-menu__item:hover {
   background: var(--hover-overlay);
+}
+
+.terminal-context-menu__shortcut {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
 }
 
 .terminal-context-menu__item--danger:hover {

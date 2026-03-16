@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import "./styles/global.css";
 import "./styles/terminal.css";
+import "./styles/tabbar.css";
 import { TitleBar } from "./components/titlebar/TitleBar";
 import { LayoutRenderer } from "./components/layout/LayoutRenderer";
 import { SaveLayoutDialog } from "./components/layout-manager/SaveLayoutDialog";
@@ -8,6 +9,7 @@ import { LayoutManagerDrawer } from "./components/layout-manager/LayoutManagerDr
 import { Toast } from "./components/Toast";
 import { useLayoutStore } from "./store/layoutStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { collectLeaves } from "./utils/layoutTree";
 import type { LayoutNode } from "./types/layout";
 
 interface ToastState {
@@ -78,17 +80,16 @@ export function App() {
     onSaveLayout: () => setShowSaveDialog(true),
     onOpenLayoutManager: () => setShowLayoutManager(true),
     onFocusNext: () => {
-      // 简单实现：收集所有叶子节点 ID 并循环聚焦
-      const leaves = collectLeaves(layoutTree);
-      if (leaves.length === 0) return;
-      const idx = focusPanelId ? leaves.indexOf(focusPanelId) : -1;
-      setFocusPanel(leaves[(idx + 1) % leaves.length]);
+      const leafIds = collectLeaves(layoutTree).map((l) => l.id);
+      if (leafIds.length === 0) return;
+      const idx = focusPanelId ? leafIds.indexOf(focusPanelId) : -1;
+      setFocusPanel(leafIds[(idx + 1) % leafIds.length]);
     },
     onFocusPrev: () => {
-      const leaves = collectLeaves(layoutTree);
-      if (leaves.length === 0) return;
-      const idx = focusPanelId ? leaves.indexOf(focusPanelId) : 0;
-      setFocusPanel(leaves[(idx - 1 + leaves.length) % leaves.length]);
+      const leafIds = collectLeaves(layoutTree).map((l) => l.id);
+      if (leafIds.length === 0) return;
+      const idx = focusPanelId ? leafIds.indexOf(focusPanelId) : 0;
+      setFocusPanel(leafIds[(idx - 1 + leafIds.length) % leafIds.length]);
     },
   });
 
@@ -140,12 +141,6 @@ export function App() {
       ))}
     </div>
   );
-}
-
-/** 递归收集布局树中所有叶子节点 ID */
-function collectLeaves(node: LayoutNode): string[] {
-  if (node.type === "terminal") return [node.id];
-  return [...collectLeaves(node.first), ...collectLeaves(node.second)];
 }
 
 export default App;

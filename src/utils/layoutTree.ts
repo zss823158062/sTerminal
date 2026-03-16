@@ -1,4 +1,4 @@
-import type { LayoutNode, TerminalLeaf, SplitNode } from "../types/layout";
+import type { LayoutNode, TerminalLeaf, TerminalSession, SplitNode } from "../types/layout";
 
 /**
  * 生成唯一面板 ID
@@ -132,6 +132,32 @@ export function updateRatio(
 }
 
 /**
+ * 收集布局树中所有叶子节点
+ */
+export function collectLeaves(tree: LayoutNode): TerminalLeaf[] {
+  if (tree.type === "terminal") return [tree];
+  return [...collectLeaves(tree.first), ...collectLeaves(tree.second)];
+}
+
+/**
+ * 更新指定叶子节点的属性，返回新树
+ */
+export function updateLeafInTree(
+  tree: LayoutNode,
+  targetId: string,
+  updates: Partial<Omit<TerminalLeaf, "type" | "id">>
+): LayoutNode {
+  if (tree.type === "terminal") {
+    return tree.id === targetId ? { ...tree, ...updates } : tree;
+  }
+  return {
+    ...tree,
+    first: updateLeafInTree(tree.first, targetId, updates),
+    second: updateLeafInTree(tree.second, targetId, updates),
+  };
+}
+
+/**
  * 复制面板：在目标叶子节点旁按指定方向插入 newLeaf。
  * 等同于 insertNode，语义上表示复制操作。
  */
@@ -142,4 +168,20 @@ export function duplicateNode(
   newLeaf: TerminalLeaf
 ): LayoutNode {
   return insertNode(tree, targetId, direction, newLeaf);
+}
+
+/**
+ * 创建一个新的终端会话
+ */
+export function createSession(
+  name: string,
+  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory">>
+): TerminalSession {
+  return {
+    id: generateId(),
+    shellType: config?.shellType ?? "default",
+    shellPath: config?.shellPath ?? "",
+    workingDirectory: config?.workingDirectory ?? "",
+    name,
+  };
 }
