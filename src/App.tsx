@@ -24,8 +24,8 @@ export function App() {
   const splitPanel = useLayoutStore((s) => s.splitPanel);
   const closePanel = useLayoutStore((s) => s.closePanel);
   const duplicatePanel = useLayoutStore((s) => s.duplicatePanel);
-  const focusPanelId = useLayoutStore((s) => s.focusPanelId);
-  const setFocusPanel = useLayoutStore((s) => s.setFocusPanel);
+  const focusPanelId = useLayoutStore((s) => s.focusedPanelId);
+  const setFocusPanel = useLayoutStore((s) => s.setFocusedPanel);
 
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLayoutManager, setShowLayoutManager] = useState(false);
