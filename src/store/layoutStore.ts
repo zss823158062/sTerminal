@@ -34,6 +34,12 @@ interface LayoutState {
   layoutTree: LayoutNode;
   /** 当前获得焦点的面板 ID */
   focusedPanelId: string | null;
+  /** 当前绑定的布局记录 ID（null 表示未绑定） */
+  activeLayoutId: string | null;
+  /** 当前绑定的布局名称（用于 TitleBar 显示） */
+  activeLayoutName: string | null;
+  /** 布局是否有未保存的修改 */
+  layoutDirty: boolean;
 }
 
 interface LayoutActions {
@@ -81,6 +87,15 @@ interface LayoutActions {
    */
   setFocusedPanel: (panelId: string | null) => void;
 
+  /** 绑定当前活跃布局 */
+  setActiveLayout: (id: string, name: string) => void;
+
+  /** 解绑活跃布局（新建空白布局时） */
+  clearActiveLayout: () => void;
+
+  /** 标记布局为已保存（清除 dirty 标记） */
+  markLayoutClean: () => void;
+
   /** 在指定 leaf 中新增一个 tab，自动激活，返回新 session ID */
   addTab: (
     leafId: string,
@@ -92,6 +107,30 @@ interface LayoutActions {
 
   /** 切换指定 leaf 的活跃 tab */
   setActiveTab: (leafId: string, tabId: string) => void;
+
+  /** 移动 tab：同面板排序 / 跨面板合并 */
+  moveTab: (
+    fromLeafId: string,
+    tabId: string,
+    toLeafId: string,
+    toIndex: number
+  ) => void;
+
+  /** 更新指定 tab 的配置（shell/目录/命令/名称） */
+  updateTabConfig: (
+    leafId: string,
+    tabId: string,
+    config: Partial<Omit<TerminalSession, "id">>
+  ) => void;
+
+  /** 移动 tab 到新分割面板 */
+  moveTabToNewSplit: (
+    fromLeafId: string,
+    tabId: string,
+    targetLeafId: string,
+    direction: "horizontal" | "vertical",
+    position: "before" | "after"
+  ) => void;
 }
 
 export type LayoutStore = LayoutState & LayoutActions;
@@ -102,6 +141,9 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
   return {
     layoutTree: initialLeaf,
     focusedPanelId: initialLeaf.id,
+    activeLayoutId: null,
+    activeLayoutName: null,
+    layoutDirty: false,
 
     splitPanel(panelId, direction, config) {
       const session = createSession(`控制台 ${panelNameCounter++}`, config);
@@ -114,6 +156,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
       set((state) => ({
         layoutTree: insertNode(state.layoutTree, panelId, direction, newLeaf),
         focusedPanelId: newLeaf.id,
+        layoutDirty: true,
       }));
       return newLeaf.id;
     },
@@ -124,16 +167,15 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
       if (!leaf) return;
 
       if (leaf.tabs.length <= 1) {
-        // 最后一个 tab：移除整个 leaf（仅当不是最后一个面板时）
         if (countLeaves(layoutTree) <= 1) return;
         const newTree = removeNode(layoutTree, panelId);
         if (newTree === null) return;
         set({
           layoutTree: newTree,
           focusedPanelId: focusedPanelId === panelId ? null : focusedPanelId,
+          layoutDirty: true,
         });
       } else {
-        // 关闭活跃 tab，切换到相邻 tab
         const activeIdx = leaf.tabs.findIndex((t) => t.id === leaf.activeTabId);
         const newTabs = leaf.tabs.filter((t) => t.id !== leaf.activeTabId);
         const newActiveIdx = Math.min(activeIdx, newTabs.length - 1);
@@ -142,6 +184,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
             tabs: newTabs,
             activeTabId: newTabs[newActiveIdx].id,
           }),
+          layoutDirty: true,
         }));
       }
     },
@@ -153,6 +196,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
           targetSplitFirstLeafId,
           newRatio
         ),
+        layoutDirty: true,
       }));
     },
 
@@ -172,6 +216,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
           newLeaf
         ),
         focusedPanelId: newLeaf.id,
+        layoutDirty: true,
       }));
       return newLeaf.id;
     },
@@ -188,16 +233,29 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
           layoutTree: updateLeafInTree(state.layoutTree, leaf.id, {
             tabs: newTabs,
           }),
+          layoutDirty: true,
         };
       });
     },
 
     setLayoutTree(tree) {
-      set({ layoutTree: tree, focusedPanelId: null });
+      set({ layoutTree: tree, focusedPanelId: null, layoutDirty: false });
     },
 
     setFocusedPanel(panelId) {
       set({ focusedPanelId: panelId });
+    },
+
+    setActiveLayout(id, name) {
+      set({ activeLayoutId: id, activeLayoutName: name });
+    },
+
+    clearActiveLayout() {
+      set({ activeLayoutId: null, activeLayoutName: null });
+    },
+
+    markLayoutClean() {
+      set({ layoutDirty: false });
     },
 
     addTab(leafId, config) {
@@ -210,6 +268,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
             tabs: [...leaf.tabs, session],
             activeTabId: session.id,
           }),
+          layoutDirty: true,
         };
       });
       return session.id;
@@ -228,6 +287,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
         set({
           layoutTree: newTree,
           focusedPanelId: focusedPanelId === leafId ? null : focusedPanelId,
+          layoutDirty: true,
         });
       } else {
         const closedIdx = leaf.tabs.findIndex((t) => t.id === tabId);
@@ -242,6 +302,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
             tabs: newTabs,
             activeTabId: newActiveTabId,
           }),
+          layoutDirty: true,
         }));
       }
     },
@@ -251,7 +312,145 @@ export const useLayoutStore = create<LayoutStore>((set, get) => {
         layoutTree: updateLeafInTree(state.layoutTree, leafId, {
           activeTabId: tabId,
         }),
+        layoutDirty: true,
       }));
+    },
+
+    updateTabConfig(leafId, tabId, config) {
+      set((state) => {
+        const leaf = findLeafById(state.layoutTree, leafId);
+        if (!leaf) return state;
+        const newTabs = leaf.tabs.map((t) =>
+          t.id === tabId ? { ...t, ...config } : t
+        );
+        return {
+          layoutTree: updateLeafInTree(state.layoutTree, leafId, {
+            tabs: newTabs,
+          }),
+          layoutDirty: true,
+        };
+      });
+    },
+
+    moveTab(fromLeafId, tabId, toLeafId, toIndex) {
+      const { layoutTree, focusedPanelId } = get();
+      const fromLeaf = findLeafById(layoutTree, fromLeafId);
+      if (!fromLeaf) return;
+
+      const tab = fromLeaf.tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+
+      if (fromLeafId === toLeafId) {
+        // 同面板排序
+        const currentIdx = fromLeaf.tabs.findIndex((t) => t.id === tabId);
+        if (currentIdx === toIndex || currentIdx === toIndex - 1) return; // no-op
+        const newTabs = [...fromLeaf.tabs];
+        newTabs.splice(currentIdx, 1);
+        const insertIdx = toIndex > currentIdx ? toIndex - 1 : toIndex;
+        newTabs.splice(insertIdx, 0, tab);
+        set((state) => ({
+          layoutTree: updateLeafInTree(state.layoutTree, fromLeafId, {
+            tabs: newTabs,
+          }),
+          layoutDirty: true,
+        }));
+      } else {
+        // 跨面板合并
+        const toLeaf = findLeafById(layoutTree, toLeafId);
+        if (!toLeaf) return;
+
+        const fromTabs = fromLeaf.tabs.filter((t) => t.id !== tabId);
+        let tree = layoutTree;
+
+        if (fromTabs.length === 0) {
+          // 源 leaf 空了，移除
+          const newTree = removeNode(tree, fromLeafId);
+          if (!newTree) return;
+          tree = newTree;
+        } else {
+          // 更新源 leaf
+          const newActiveId =
+            fromLeaf.activeTabId === tabId
+              ? fromTabs[Math.min(
+                  fromLeaf.tabs.findIndex((t) => t.id === tabId),
+                  fromTabs.length - 1
+                )].id
+              : fromLeaf.activeTabId;
+          tree = updateLeafInTree(tree, fromLeafId, {
+            tabs: fromTabs,
+            activeTabId: newActiveId,
+          });
+        }
+
+        // 插入到目标 leaf
+        const newToTabs = [...toLeaf.tabs];
+        const clampedIdx = Math.min(toIndex, newToTabs.length);
+        newToTabs.splice(clampedIdx, 0, tab);
+        tree = updateLeafInTree(tree, toLeafId, {
+          tabs: newToTabs,
+          activeTabId: tabId,
+        });
+
+        set({
+          layoutTree: tree,
+          focusedPanelId:
+            focusedPanelId === fromLeafId && fromTabs.length === 0
+              ? toLeafId
+              : focusedPanelId,
+          layoutDirty: true,
+        });
+      }
+    },
+
+    moveTabToNewSplit(fromLeafId, tabId, targetLeafId, direction, position) {
+      const { layoutTree } = get();
+      const fromLeaf = findLeafById(layoutTree, fromLeafId);
+      if (!fromLeaf) return;
+
+      // 守卫：拖同面板的唯一 tab 到自身边缘
+      if (fromLeafId === targetLeafId && fromLeaf.tabs.length <= 1) return;
+
+      const tab = fromLeaf.tabs.find((t) => t.id === tabId);
+      if (!tab) return;
+
+      // 创建新 leaf
+      const newLeaf: TerminalLeaf = {
+        type: "terminal",
+        id: generateId(),
+        tabs: [tab],
+        activeTabId: tab.id,
+      };
+
+      let tree = layoutTree;
+
+      // 从源 leaf 移除 tab
+      const fromTabs = fromLeaf.tabs.filter((t) => t.id !== tabId);
+      if (fromTabs.length === 0) {
+        const newTree = removeNode(tree, fromLeafId);
+        if (!newTree) return;
+        tree = newTree;
+      } else {
+        const newActiveId =
+          fromLeaf.activeTabId === tabId
+            ? fromTabs[Math.min(
+                fromLeaf.tabs.findIndex((t) => t.id === tabId),
+                fromTabs.length - 1
+              )].id
+            : fromLeaf.activeTabId;
+        tree = updateLeafInTree(tree, fromLeafId, {
+          tabs: fromTabs,
+          activeTabId: newActiveId,
+        });
+      }
+
+      // 在目标位置插入新 split
+      tree = insertNode(tree, targetLeafId, direction, newLeaf, position);
+
+      set({
+        layoutTree: tree,
+        focusedPanelId: newLeaf.id,
+        layoutDirty: true,
+      });
     },
   };
 });

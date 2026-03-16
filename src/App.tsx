@@ -9,6 +9,7 @@ import { LayoutManagerDrawer } from "./components/layout-manager/LayoutManagerDr
 import { Toast } from "./components/Toast";
 import { useLayoutStore } from "./store/layoutStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { layoutUpdate } from "./ipc/layoutApi";
 import { collectLeaves } from "./utils/layoutTree";
 import type { LayoutNode } from "./types/layout";
 
@@ -28,6 +29,11 @@ export function App() {
   const duplicatePanel = useLayoutStore((s) => s.duplicatePanel);
   const focusPanelId = useLayoutStore((s) => s.focusedPanelId);
   const setFocusPanel = useLayoutStore((s) => s.setFocusedPanel);
+  const activeLayoutId = useLayoutStore((s) => s.activeLayoutId);
+  const activeLayoutName = useLayoutStore((s) => s.activeLayoutName);
+  const setActiveLayout = useLayoutStore((s) => s.setActiveLayout);
+  const layoutDirty = useLayoutStore((s) => s.layoutDirty);
+  const markLayoutClean = useLayoutStore((s) => s.markLayoutClean);
 
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLayoutManager, setShowLayoutManager] = useState(false);
@@ -35,6 +41,8 @@ export function App() {
 
   // 布局名称递增计数
   const [layoutNameCounter, setLayoutNameCounter] = useState(1);
+  // 布局列表刷新触发器
+  const [layoutRefreshKey, setLayoutRefreshKey] = useState(0);
 
   const addToast = useCallback(
     (message: string, type: ToastState["type"] = "info") => {
@@ -48,14 +56,32 @@ export function App() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const handleSaveSuccess = (_layoutId: string, name: string) => {
+  const handleSaveLayout = useCallback(async () => {
+    if (activeLayoutId) {
+      try {
+        await layoutUpdate(activeLayoutId, layoutTree);
+        markLayoutClean();
+        addToast("布局已保存", "success");
+      } catch (e) {
+        addToast("保存失败：" + String(e), "error");
+      }
+    } else {
+      setShowSaveDialog(true);
+    }
+  }, [activeLayoutId, layoutTree, addToast, markLayoutClean]);
+
+  const handleSaveSuccess = (layoutId: string, name: string) => {
     setShowSaveDialog(false);
     setLayoutNameCounter((n) => n + 1);
+    setActiveLayout(layoutId, name);
+    markLayoutClean();
+    setLayoutRefreshKey((n) => n + 1);
     addToast(`布局已保存：${name}`, "success");
   };
 
-  const handleLayoutLoad = (tree: LayoutNode) => {
+  const handleLayoutLoad = (tree: LayoutNode, layoutId: string, layoutName: string) => {
     setLayoutTree(tree);
+    setActiveLayout(layoutId, layoutName);
     addToast("布局已加载", "success");
   };
 
@@ -77,7 +103,7 @@ export function App() {
     onClose: () => {
       if (focusPanelId) closePanel(focusPanelId);
     },
-    onSaveLayout: () => setShowSaveDialog(true),
+    onSaveLayout: handleSaveLayout,
     onOpenLayoutManager: () => setShowLayoutManager(true),
     onFocusNext: () => {
       const leafIds = collectLeaves(layoutTree).map((l) => l.id);
@@ -105,7 +131,7 @@ export function App() {
     >
       <TitleBar
         onOpenLayoutManager={() => setShowLayoutManager(true)}
-        onSaveLayout={() => setShowSaveDialog(true)}
+        activeLayoutName={activeLayoutName}
       />
 
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
@@ -128,6 +154,11 @@ export function App() {
         onClose={() => setShowLayoutManager(false)}
         onLayoutLoad={handleLayoutLoad}
         onWorkdirWarning={handleWorkdirWarning}
+        activeLayoutId={activeLayoutId}
+        layoutDirty={layoutDirty}
+        onSaveLayout={handleSaveLayout}
+        onNewLayout={() => setShowSaveDialog(true)}
+        refreshTrigger={layoutRefreshKey}
       />
 
       {/* Toast 通知 */}

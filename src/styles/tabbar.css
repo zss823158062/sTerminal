@@ -10,6 +10,8 @@
   overflow: hidden;
   padding: 0 4px;
   gap: 1px;
+  position: relative;
+  z-index: 15;
 }
 
 /* 标签滚动区域 */
@@ -22,6 +24,7 @@
   gap: 1px;
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 
 .tabbar__tabs::-webkit-scrollbar {
@@ -138,4 +141,21 @@
 .tabbar__add-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
+}
+
+/* 拖拽中的 tab */
+.tabbar__tab--dragging {
+  opacity: 0.4;
+}
+
+/* 拖拽插入指示线 */
+.tabbar__drop-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--focus-ring);
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 10;
 }

@@ -12,6 +12,8 @@ export interface TerminalSession {
   workingDirectory: string;
   /** 标签页显示名称，如 "控制台 1" */
   name?: string;
+  /** 终端创建后自动执行的命令 */
+  startupCommand?: string;
 }
 
 /**

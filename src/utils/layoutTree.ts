@@ -30,14 +30,16 @@ export function findLeafById(
 
 /**
  * 在目标叶子节点位置插入分割节点，返回新树。
- * 目标叶子变为 first，newLeaf 变为 second。
+ * position = "after"（默认）：目标叶子变为 first，newLeaf 变为 second。
+ * position = "before"：newLeaf 变为 first，目标叶子变为 second。
  * 如果目标 ID 不存在，返回原树不变。
  */
 export function insertNode(
   tree: LayoutNode,
   targetId: string,
   direction: "horizontal" | "vertical",
-  newLeaf: TerminalLeaf
+  newLeaf: TerminalLeaf,
+  position: "before" | "after" = "after"
 ): LayoutNode {
   if (tree.type === "terminal") {
     if (tree.id !== targetId) return tree;
@@ -45,15 +47,15 @@ export function insertNode(
       type: "split",
       direction,
       ratio: 0.5,
-      first: tree,
-      second: newLeaf,
+      first: position === "after" ? tree : newLeaf,
+      second: position === "after" ? newLeaf : tree,
     };
     return splitNode;
   }
   return {
     ...tree,
-    first: insertNode(tree.first, targetId, direction, newLeaf),
-    second: insertNode(tree.second, targetId, direction, newLeaf),
+    first: insertNode(tree.first, targetId, direction, newLeaf, position),
+    second: insertNode(tree.second, targetId, direction, newLeaf, position),
   };
 }
 
@@ -175,7 +177,7 @@ export function duplicateNode(
  */
 export function createSession(
   name: string,
-  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory">>
+  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory" | "startupCommand">>
 ): TerminalSession {
   return {
     id: generateId(),
@@ -183,5 +185,6 @@ export function createSession(
     shellPath: config?.shellPath ?? "",
     workingDirectory: config?.workingDirectory ?? "",
     name,
+    ...(config?.startupCommand ? { startupCommand: config.startupCommand } : {}),
   };
 }

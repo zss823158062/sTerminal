@@ -7,6 +7,7 @@
   display: flex;
   flex-direction: column;
   background-color: var(--bg-panel);
+  position: relative;
 }
 
 .terminal-container {
@@ -200,4 +201,28 @@
   height: 1px;
   background: var(--border);
   margin: 4px 0;
+}
+
+/* ── Drop overlay ── */
+.drop-overlay {
+  position: absolute;
+  background: rgba(59, 130, 246, 0.15);
+  border: 2px solid rgba(59, 130, 246, 0.5);
+  border-radius: 4px;
+  z-index: 11;
+  pointer-events: none;
+  transition: all 80ms ease;
+}
+
+.drop-overlay--center {
+  border-style: dashed;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* 拖拽期间覆盖 xterm canvas 的透明捕获层 */
+.terminal-pane__drag-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: transparent;
 }

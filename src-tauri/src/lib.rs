@@ -9,7 +9,7 @@ use commands::terminal::{
     shell_list_available,
 };
 use commands::layout::{
-    layout_save, layout_list, layout_load, layout_delete, layout_rename,
+    layout_save, layout_list, layout_load, layout_update, layout_delete, layout_rename,
     settings_get, settings_save,
 };
 use pty::manager::PtyManager;
@@ -34,12 +34,23 @@ pub fn run() {
             layout_save,
             layout_list,
             layout_load,
+            layout_update,
             layout_delete,
             layout_rename,
             // 设置命令
             settings_get,
             settings_save,
         ])
+        // 设置窗口图标
+        .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let icon_bytes = include_bytes!("../icons/icon.png");
+                if let Ok(icon) = tauri::image::Image::from_bytes(icon_bytes) {
+                    let _ = window.set_icon(icon);
+                }
+            }
+            Ok(())
+        })
         // 窗口关闭时全量清理所有 PTY 进程，防止孤儿进程
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {

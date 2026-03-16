@@ -2,3 +2,5 @@ node_modules/
 .worktrees/
 dist/
 src-tauri/target/
+.claude/
+.playwright-mcp/

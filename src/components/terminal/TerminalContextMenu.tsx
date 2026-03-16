@@ -13,6 +13,7 @@ interface TerminalContextMenuProps {
   onSplitHorizontal: () => void;
   onSplitVertical: () => void;
   onDuplicate: () => void;
+  onSettings: () => void;
   onClose: () => void;
   onDismiss: () => void;
 }
@@ -25,6 +26,7 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
   onSplitHorizontal,
   onSplitVertical,
   onDuplicate,
+  onSettings,
   onClose,
   onDismiss,
 }) => {
@@ -102,6 +104,13 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
         onClick={() => handleAction(onDuplicate)}
       >
         ⎘ 复制此面板
+      </button>
+      <div className="terminal-context-menu__separator" />
+      <button
+        className="terminal-context-menu__item"
+        onClick={() => handleAction(onSettings)}
+      >
+        ⚙ 终端设置
       </button>
       <div className="terminal-context-menu__separator" />
       <button

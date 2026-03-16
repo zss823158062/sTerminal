@@ -3,12 +3,12 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface TitleBarProps {
   onOpenLayoutManager: () => void;
-  onSaveLayout: () => void;
+  activeLayoutName?: string | null;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenLayoutManager,
-  onSaveLayout,
+  activeLayoutName,
 }) => {
   const win = getCurrentWindow();
 
@@ -21,6 +21,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       {/* 左侧：应用名 */}
       <div style={leftStyle}>
         <span style={appNameStyle}>sTerminal</span>
+        {activeLayoutName && (
+          <span style={layoutNameStyle}>「{activeLayoutName}」</span>
+        )}
       </div>
 
       {/* 中间：拖拽区域 */}
@@ -37,13 +40,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           title="布局管理 (Ctrl+Shift+L)"
         >
           布局
-        </button>
-        <button
-          style={actionBtnStyle}
-          onClick={onSaveLayout}
-          title="保存布局 (Ctrl+Shift+S)"
-        >
-          保存布局
         </button>
 
         <div style={separatorStyle} />
@@ -97,6 +93,12 @@ const appNameStyle: React.CSSProperties = {
   fontWeight: 600,
   color: "var(--text-primary, #e0e0e0)",
   letterSpacing: "0.5px",
+};
+
+const layoutNameStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "var(--text-muted, #666)",
+  marginLeft: 8,
 };
 
 const dragRegionStyle: React.CSSProperties = {

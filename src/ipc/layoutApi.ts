@@ -35,6 +35,19 @@ export async function layoutLoad(layoutId: string): Promise<SavedLayout> {
 }
 
 /**
+ * 覆盖更新指定 ID 的布局树
+ *
+ * @param layoutId 要更新的布局 UUID
+ * @param tree 新的布局树
+ */
+export async function layoutUpdate(
+  layoutId: string,
+  tree: LayoutNode
+): Promise<void> {
+  return invoke("layout_update", { layoutId, tree });
+}
+
+/**
  * 删除指定 ID 的布局记录（幂等：ID 不存在也返回成功）
  *
  * @param layoutId 要删除的布局 UUID

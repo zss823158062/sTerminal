@@ -216,6 +216,19 @@ impl LayoutStore {
         self.write_layouts(&layouts)
     }
 
+    /// 覆盖更新指定 ID 的布局树
+    pub async fn update_layout(&self, layout_id: &str, tree: Value) -> Result<(), String> {
+        let mut layouts = self.read_layouts()?;
+        let layout = layouts
+            .iter_mut()
+            .find(|l| l.id == layout_id)
+            .ok_or_else(|| format!("Layout '{}' not found", layout_id))?;
+        layout.tree = tree.clone();
+        layout.panel_count = Self::count_leaves(&tree);
+        layout.updated_at = Self::now_iso8601();
+        self.write_layouts(&layouts)
+    }
+
     /// 重命名指定 ID 的布局
     pub async fn rename_layout(&self, layout_id: &str, new_name: String) -> Result<(), String> {
         let new_name = new_name.trim().to_string();

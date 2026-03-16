@@ -6,10 +6,20 @@ import { LayoutListItem } from "./LayoutListItem";
 interface LayoutManagerDrawerProps {
   open: boolean;
   onClose: () => void;
-  /** 加载布局后回调，传入新的布局树 */
-  onLayoutLoad: (tree: LayoutNode) => void;
+  /** 加载布局后回调，传入新的布局树、布局 ID 和名称 */
+  onLayoutLoad: (tree: LayoutNode, layoutId: string, layoutName: string) => void;
   /** 工作目录警告 Toast 触发 */
   onWorkdirWarning?: (message: string) => void;
+  /** 当前绑定的布局 ID */
+  activeLayoutId?: string | null;
+  /** 布局是否有未保存的修改 */
+  layoutDirty?: boolean;
+  /** 覆盖保存当前布局 */
+  onSaveLayout?: () => void;
+  /** 新建布局（另存为） */
+  onNewLayout?: () => void;
+  /** 变化时触发列表刷新（保存成功后递增） */
+  refreshTrigger?: number;
 }
 
 export const LayoutManagerDrawer: React.FC<LayoutManagerDrawerProps> = ({
@@ -17,6 +27,11 @@ export const LayoutManagerDrawer: React.FC<LayoutManagerDrawerProps> = ({
   onClose,
   onLayoutLoad,
   onWorkdirWarning,
+  activeLayoutId,
+  layoutDirty,
+  onSaveLayout,
+  onNewLayout,
+  refreshTrigger,
 }) => {
   const [layouts, setLayouts] = useState<SavedLayoutMeta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +52,7 @@ export const LayoutManagerDrawer: React.FC<LayoutManagerDrawerProps> = ({
 
   useEffect(() => {
     if (open) fetchLayouts();
-  }, [open, fetchLayouts]);
+  }, [open, fetchLayouts, refreshTrigger]);
 
   // ESC 关闭
   useEffect(() => {
@@ -54,7 +69,7 @@ export const LayoutManagerDrawer: React.FC<LayoutManagerDrawerProps> = ({
     if (!ok) return;
     try {
       const saved = await layoutLoad(layoutId);
-      onLayoutLoad(saved.tree);
+      onLayoutLoad(saved.tree, saved.id, saved.name);
       onClose();
       // 检查工作目录是否存在由后端处理，前端可通过事件获知
       if (onWorkdirWarning) {
@@ -90,9 +105,16 @@ export const LayoutManagerDrawer: React.FC<LayoutManagerDrawerProps> = ({
           <span style={{ fontSize: 14, fontWeight: 600, color: "#e0e0e0" }}>
             布局管理
           </span>
-          <button onClick={onClose} style={closeBtnStyle} title="关闭">
-            ✕
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            {onNewLayout && (
+              <button onClick={onNewLayout} style={newLayoutBtnStyle} title="将当前布局另存为新布局">
+                + 新建
+              </button>
+            )}
+            <button onClick={onClose} style={headerCloseBtnStyle} title="关闭">
+              ✕
+            </button>
+          </div>
         </div>
 
         <div style={bodyStyle}>
@@ -109,7 +131,10 @@ export const LayoutManagerDrawer: React.FC<LayoutManagerDrawerProps> = ({
             <LayoutListItem
               key={layout.id}
               layout={layout}
+              isActive={layout.id === activeLayoutId}
+              isDirty={layout.id === activeLayoutId && !!layoutDirty}
               onLoad={handleLoad}
+              onSave={onSaveLayout}
               onDeleted={handleDeleted}
               onRenamed={handleRenamed}
             />
@@ -164,7 +189,15 @@ const emptyStyle: React.CSSProperties = {
   padding: "40px 20px",
 };
 
-const closeBtnStyle: React.CSSProperties = {
+const newLayoutBtnStyle: React.CSSProperties = {
+  padding: "3px 10px",
+  fontSize: 12,
+  color: "#4ade80",
+  background: "rgba(74, 222, 128, 0.1)",
+  borderRadius: 3,
+};
+
+const headerCloseBtnStyle: React.CSSProperties = {
   background: "transparent",
   color: "#999",
   fontSize: 14,

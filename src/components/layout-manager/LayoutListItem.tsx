@@ -4,7 +4,13 @@ import { layoutRename, layoutDelete } from "../../ipc/layoutApi";
 
 interface LayoutListItemProps {
   layout: SavedLayoutMeta;
+  /** 是否为当前活跃布局 */
+  isActive?: boolean;
+  /** 活跃布局是否有未保存的修改 */
+  isDirty?: boolean;
   onLoad: (layoutId: string) => void;
+  /** 覆盖保存当前布局（仅活跃布局可用） */
+  onSave?: () => void;
   onDeleted: (layoutId: string) => void;
   onRenamed: (layoutId: string, newName: string) => void;
 }
@@ -22,7 +28,10 @@ function formatDate(iso: string): string {
 
 export const LayoutListItem: React.FC<LayoutListItemProps> = ({
   layout,
+  isActive,
+  isDirty,
   onLoad,
+  onSave,
   onDeleted,
   onRenamed,
 }) => {
@@ -82,7 +91,10 @@ export const LayoutListItem: React.FC<LayoutListItemProps> = ({
             {renameError && <span style={errorStyle}>{renameError}</span>}
           </div>
         ) : (
-          <span style={nameStyle}>{layout.name}</span>
+          <span style={nameStyle}>
+            {isActive && <span style={activeBadgeStyle}>●</span>}
+            {layout.name}
+          </span>
         )}
         <span style={metaStyle}>
           {formatDate(layout.updatedAt)} · {layout.panelCount} 个面板
@@ -100,6 +112,20 @@ export const LayoutListItem: React.FC<LayoutListItemProps> = ({
           </>
         ) : (
           <>
+            {isActive && onSave && (
+              <button
+                onClick={onSave}
+                disabled={!isDirty}
+                style={{
+                  ...btnStyle,
+                  ...saveBtnStyle,
+                  ...(!isDirty ? disabledSaveBtnStyle : {}),
+                }}
+                title={isDirty ? "保存当前修改到此布局" : "布局没有变化"}
+              >
+                保存
+              </button>
+            )}
             <button
               onClick={() => onLoad(layout.id)}
               style={btnStyle}
@@ -155,6 +181,12 @@ const nameStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
+const activeBadgeStyle: React.CSSProperties = {
+  color: "#4ade80",
+  marginRight: 4,
+  fontSize: 10,
+};
+
 const metaStyle: React.CSSProperties = {
   fontSize: 11,
   color: "#666",
@@ -172,6 +204,15 @@ const btnStyle: React.CSSProperties = {
   background: "#2a2a2a",
   color: "#e0e0e0",
   borderRadius: 3,
+};
+
+const saveBtnStyle: React.CSSProperties = {
+  color: "#4ade80",
+};
+
+const disabledSaveBtnStyle: React.CSSProperties = {
+  color: "#666",
+  cursor: "not-allowed",
 };
 
 const dangerBtnStyle: React.CSSProperties = {

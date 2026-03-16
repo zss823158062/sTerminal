@@ -13,6 +13,7 @@ use crate::commands::terminal::{TerminalExitEvent, TerminalOutputEvent};
 /// - 进程退出检测 → emit terminal:exit 事件
 pub struct PtyProcess {
     /// 终端唯一 ID（UUID v4）
+    #[allow(dead_code)]
     pub terminal_id: String,
     /// 子进程 PID
     pub pid: u32,

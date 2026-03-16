@@ -66,6 +66,25 @@ pub async fn layout_delete(
     store.delete_layout(&layout_id).await
 }
 
+/// 覆盖更新指定 ID 的布局树
+///
+/// # 参数
+/// - `layout_id`: 要更新的布局 UUID
+/// - `tree`: 新的布局树 JSON 值
+///
+/// # 返回
+/// - `Ok(())`: 更新成功
+/// - `Err(String)`: ID 不存在或存储写入失败
+#[tauri::command]
+pub async fn layout_update(
+    layout_id: String,
+    tree: serde_json::Value,
+    app: AppHandle,
+) -> Result<(), String> {
+    let store = LayoutStore::new(&app)?;
+    store.update_layout(&layout_id, tree).await
+}
+
 /// 重命名指定 ID 的布局
 ///
 /// # 参数
