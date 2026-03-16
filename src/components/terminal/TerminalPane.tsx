@@ -1,4 +1,4 @@
-import React, { useRef, useState, type RefObject } from "react";
+import React, { useRef, useState } from "react";
 import type { TerminalLeaf } from "../../types/layout";
 import { useTerminal } from "../../hooks/useTerminal";
 import { TerminalHeader } from "./TerminalHeader";
@@ -27,7 +27,7 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({
   onDuplicate,
   onClose,
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null) as RefObject<HTMLDivElement>;
+  const containerRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   const { isAlive, exitCode, restart } = useTerminal({

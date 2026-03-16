@@ -189,10 +189,6 @@ impl PtyProcess {
         let link = format!("/proc/{}/cwd", self.pid);
         std::fs::read_link(&link)
             .map(|p| p.to_string_lossy().to_string())
-            .map_err(|_| {
-                // macOS 回退：使用初始目录
-                self.initial_cwd.clone()
-            })
             .or_else(|_| Ok(self.initial_cwd.clone()))
     }
 

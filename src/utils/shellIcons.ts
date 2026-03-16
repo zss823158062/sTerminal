@@ -8,6 +8,7 @@ export interface ShellIconInfo {
 
 const SHELL_ICON_MAP: Record<string, ShellIconInfo> = {
   powershell: { icon: "PS", color: "#012456" },
+  pwsh: { icon: "PS", color: "#012456" },
   cmd: { icon: ">_", color: "#333" },
   bash: { icon: "$", color: "#4EAA25" },
   zsh: { icon: "Z", color: "#F15A24" },
