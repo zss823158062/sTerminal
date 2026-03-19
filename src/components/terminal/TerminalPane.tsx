@@ -8,7 +8,7 @@ import { DropOverlay, type DropZone } from "../DropOverlay";
 import { useLayoutStore } from "../../store/layoutStore";
 import { countLeaves } from "../../utils/layoutTree";
 import { destroyTerminal, getTerminal } from "../../terminal/terminalInstances";
-import { terminalGetCwd } from "../../ipc/terminalApi";
+import { terminalGetCwd, terminalWrite } from "../../ipc/terminalApi";
 import { getDragPayload, endDrag } from "../../utils/tabDragState";
 import { useConfirm } from "../../hooks/useConfirm";
 
@@ -330,6 +330,12 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ leaf }) => {
           onClose={() => closePanel(leaf.id)}
           onDismiss={() => setContextMenu(null)}
           onConfirm={(msg) => confirm({ message: msg, title: "关闭面板", kind: "danger" })}
+          onPasteCommand={(command) => {
+            const managed = getTerminal(activeSession.id);
+            if (managed?.terminalId) {
+              terminalWrite(managed.terminalId, new TextEncoder().encode(command));
+            }
+          }}
         />
       )}
       <ConfirmPortal />

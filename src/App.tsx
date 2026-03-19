@@ -7,6 +7,7 @@ import { LayoutRenderer } from "./components/layout/LayoutRenderer";
 import { SaveLayoutDialog } from "./components/layout-manager/SaveLayoutDialog";
 import { LayoutManagerDrawer } from "./components/layout-manager/LayoutManagerDrawer";
 import { AppSettingsDialog } from "./components/settings/AppSettingsDialog";
+import { CommandManagerDrawer } from "./components/commands/CommandManagerDrawer";
 import { Toast } from "./components/Toast";
 import { useLayoutStore } from "./store/layoutStore";
 import { useSettingsStore } from "./store/settingsStore";
@@ -44,6 +45,7 @@ export function App() {
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [showLayoutManager, setShowLayoutManager] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCommandManager, setShowCommandManager] = useState(false);
   const [toasts, setToasts] = useState<ToastState[]>([]);
 
   // 布局名称递增计数
@@ -132,6 +134,7 @@ export function App() {
     onSaveLayout: handleSaveLayout,
     onOpenLayoutManager: () => setShowLayoutManager(true),
     onOpenSettings: () => setShowSettings(true),
+    onOpenCommandManager: () => setShowCommandManager(true),
     onFocusNext: () => {
       const leafIds = collectLeaves(layoutTree).map((l) => l.id);
       if (leafIds.length === 0) return;
@@ -159,6 +162,7 @@ export function App() {
       <TitleBar
         onOpenLayoutManager={() => setShowLayoutManager(true)}
         onOpenSettings={() => setShowSettings(true)}
+        onOpenCommandManager={() => setShowCommandManager(true)}
         activeLayoutName={activeLayoutName}
       />
 
@@ -184,6 +188,12 @@ export function App() {
           onCancel={() => setShowSaveDialog(false)}
         />
       )}
+
+      {/* 常用命令管理抽屉 */}
+      <CommandManagerDrawer
+        open={showCommandManager}
+        onClose={() => setShowCommandManager(false)}
+      />
 
       {/* 布局管理抽屉 */}
       <LayoutManagerDrawer

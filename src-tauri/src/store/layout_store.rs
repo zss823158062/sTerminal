@@ -53,6 +53,28 @@ pub struct SavedLayoutMeta {
     pub panel_count: u32,
 }
 
+/// 常用命令，对应前端 CommonCommand
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommonCommand {
+    /// 命令唯一 ID，UUID v4
+    pub id: String,
+    /// 显示名称
+    pub name: String,
+    /// 命令文本
+    pub command: String,
+}
+
+/// 命令分组，对应前端 CommandGroup
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandGroup {
+    /// 分组唯一 ID，UUID v4
+    pub id: String,
+    /// 分组名称
+    pub name: String,
+    /// 分组下的命令列表
+    pub commands: Vec<CommonCommand>,
+}
+
 /// 应用设置，对应前端 AppSettings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
@@ -65,6 +87,9 @@ pub struct AppSettings {
     /// 默认初始工作目录，空字符串使用 Home 目录
     #[serde(rename = "defaultWorkingDirectory")]
     pub default_working_directory: String,
+    /// 常用命令分组列表
+    #[serde(rename = "commandGroups", default)]
+    pub command_groups: Vec<CommandGroup>,
 }
 
 impl Default for AppSettings {
@@ -73,6 +98,7 @@ impl Default for AppSettings {
             default_shell: String::new(),
             default_shell_path: String::new(),
             default_working_directory: String::new(),
+            command_groups: Vec::new(),
         }
     }
 }

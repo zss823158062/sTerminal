@@ -192,6 +192,20 @@
   font-family: var(--font-mono);
 }
 
+.terminal-context-menu__item--disabled {
+  color: var(--text-muted);
+  cursor: default;
+  pointer-events: none;
+}
+
+.terminal-context-menu__group-label {
+  padding: 4px 10px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  user-select: none;
+}
+
 .terminal-context-menu__item--danger:hover {
   background: var(--btn-bg-danger);
   color: #fff;

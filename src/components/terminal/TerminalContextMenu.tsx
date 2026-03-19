@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import { useSettingsStore } from "../../store/settingsStore";
 
 interface ContextMenuPosition {
   x: number;
@@ -17,6 +18,7 @@ interface TerminalContextMenuProps {
   onClose: () => void;
   onDismiss: () => void;
   onConfirm?: (message: string) => Promise<boolean>;
+  onPasteCommand?: (command: string) => void;
 }
 
 export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
@@ -31,7 +33,9 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
   onClose,
   onDismiss,
   onConfirm,
+  onPasteCommand,
 }) => {
+  const commandGroups = useSettingsStore((s) => s.settings.commandGroups ?? []);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // 点击外部关闭
@@ -114,6 +118,41 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
       >
         ⚙ 当前控制台设置
       </button>
+      {/* 常用命令（按分组） */}
+      {onPasteCommand && (
+        <>
+          <div className="terminal-context-menu__separator" />
+          {commandGroups.length === 0 ? (
+            <div className="terminal-context-menu__item terminal-context-menu__item--disabled">
+              暂无常用命令
+            </div>
+          ) : (
+            commandGroups.map((group) => (
+              <React.Fragment key={group.id}>
+                {group.commands.length > 0 && (
+                  <>
+                    <div className="terminal-context-menu__group-label">
+                      {group.name}
+                    </div>
+                    {group.commands.map((cmd) => (
+                      <button
+                        key={cmd.id}
+                        className="terminal-context-menu__item"
+                        onClick={() => handleAction(() => onPasteCommand(cmd.command))}
+                        title={cmd.command}
+                      >
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          ⌘ {cmd.name}
+                        </span>
+                      </button>
+                    ))}
+                  </>
+                )}
+              </React.Fragment>
+            ))
+          )}
+        </>
+      )}
       <div className="terminal-context-menu__separator" />
       <button
         className="terminal-context-menu__item terminal-context-menu__item--danger"

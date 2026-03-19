@@ -23,6 +23,7 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
     defaultShell: "",
     defaultShellPath: "",
     defaultWorkingDirectory: "",
+    commandGroups: [],
   },
   loaded: false,
 

@@ -8,6 +8,7 @@ interface KeyboardShortcutHandlers {
   onSaveLayout?: () => void;
   onOpenLayoutManager?: () => void;
   onOpenSettings?: () => void;
+  onOpenCommandManager?: () => void;
   onFocusNext?: () => void;
   onFocusPrev?: () => void;
 }
@@ -21,6 +22,7 @@ interface KeyboardShortcutHandlers {
  * - Ctrl+Shift+W：关闭当前焦点面板
  * - Ctrl+Shift+S：保存当前布局
  * - Ctrl+Shift+L：打开布局管理
+ * - Ctrl+Shift+P：打开常用命令管理
  * - Ctrl+,：打开设置
  * - Ctrl+Tab：聚焦下一面板
  * - Ctrl+Shift+Tab：聚焦上一面板
@@ -60,6 +62,11 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers): void {
       if (ctrl && shift && key === "L") {
         e.preventDefault();
         handlers.onOpenLayoutManager?.();
+        return;
+      }
+      if (ctrl && shift && key === "P") {
+        e.preventDefault();
+        handlers.onOpenCommandManager?.();
         return;
       }
       if (ctrl && !shift && e.key === ",") {

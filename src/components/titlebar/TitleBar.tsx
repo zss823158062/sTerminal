@@ -4,12 +4,14 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 interface TitleBarProps {
   onOpenLayoutManager: () => void;
   onOpenSettings: () => void;
+  onOpenCommandManager: () => void;
   activeLayoutName?: string | null;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenLayoutManager,
   onOpenSettings,
+  onOpenCommandManager,
   activeLayoutName,
 }) => {
   const win = getCurrentWindow();
@@ -42,6 +44,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
           title="设置 (Ctrl+,)"
         >
           设置
+        </button>
+        <button
+          style={actionBtnStyle}
+          onClick={onOpenCommandManager}
+          title="常用命令 (Ctrl+Shift+P)"
+        >
+          命令
         </button>
         <button
           style={actionBtnStyle}

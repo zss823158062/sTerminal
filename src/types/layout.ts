@@ -91,6 +91,30 @@ export interface SavedLayoutMeta {
 }
 
 /**
+ * 常用命令
+ */
+export interface CommonCommand {
+  /** 命令唯一 ID，UUID v4 格式 */
+  id: string;
+  /** 显示名称 */
+  name: string;
+  /** 命令文本 */
+  command: string;
+}
+
+/**
+ * 命令分组
+ */
+export interface CommandGroup {
+  /** 分组唯一 ID，UUID v4 格式 */
+  id: string;
+  /** 分组名称 */
+  name: string;
+  /** 分组下的命令列表 */
+  commands: CommonCommand[];
+}
+
+/**
  * 持久化存储的完整数据结构（tauri-plugin-store 存储在 config.json）
  */
 export interface AppStore {
@@ -115,4 +139,6 @@ export interface AppSettings {
   defaultShellPath: string;
   /** 默认初始工作目录绝对路径，空字符串表示使用用户 Home 目录 */
   defaultWorkingDirectory: string;
+  /** 常用命令分组列表 */
+  commandGroups: CommandGroup[];
 }

@@ -49,6 +49,7 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({
   const handleSave = () => {
     const selectedShell = shells.find((s) => s.type === defaultShell);
     onSave({
+      ...settings,
       defaultShell,
       defaultShellPath: selectedShell?.path ?? "",
       defaultWorkingDirectory,
