@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install dependencies (Linux)
         if: matrix.platform == 'ubuntu-22.04'
@@ -53,6 +55,28 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
+      - name: Generate release notes
+        id: changelog
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOGS=$(git log --pretty=format:"- %s" --no-merges -20)
+            COMPARE="$(git rev-list --max-parents=0 HEAD | head -1)"
+          else
+            LOGS=$(git log --pretty=format:"- %s" --no-merges "${PREV_TAG}..HEAD")
+            COMPARE="${PREV_TAG}"
+          fi
+          {
+            echo "notes<<ENDOFNOTES"
+            echo "## What's Changed"
+            echo ""
+            echo "$LOGS"
+            echo ""
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${COMPARE}...${{ github.ref_name }}"
+            echo "ENDOFNOTES"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -60,8 +84,8 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'sTerminal ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download and install this version.'
-          releaseDraft: true
+          releaseBody: ${{ steps.changelog.outputs.notes }}
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
