@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { isMacOS } from "../../utils/platform";
 
@@ -21,6 +22,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   activeLayoutName,
 }) => {
   const win = getCurrentWindow();
+  const [version, setVersion] = useState("");
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
 
   const handleMinimize = () => win.minimize().catch(console.error);
   const handleMaximize = () => win.toggleMaximize().catch(console.error);
@@ -31,6 +37,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       {/* 左侧：应用名 */}
       <div style={leftStyle}>
         <span style={appNameStyle}>sTerminal</span>
+        {version && <span style={versionStyle}>v{version}</span>}
         {activeLayoutName && (
           <span style={layoutNameStyle}>「{activeLayoutName}」</span>
         )}
@@ -162,6 +169,12 @@ const appNameStyle: React.CSSProperties = {
   fontWeight: 600,
   color: "var(--text-primary, #e0e0e0)",
   letterSpacing: "0.5px",
+};
+
+const versionStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--text-muted, #666)",
+  marginLeft: 6,
 };
 
 const layoutNameStyle: React.CSSProperties = {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { getVersion } from "@tauri-apps/api/app";
 import type { AppSettings } from "../../types/layout";
 import type { ShellInfo } from "../../types/terminal";
 import { shellListAvailable } from "../../ipc/terminalApi";
@@ -15,11 +16,16 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({
   onCancel,
 }) => {
   const [shells, setShells] = useState<ShellInfo[]>([]);
+  const [version, setVersion] = useState("");
   const [defaultShell, setDefaultShell] = useState(settings.defaultShell);
   const [defaultWorkingDirectory, setDefaultWorkingDirectory] = useState(
     settings.defaultWorkingDirectory
   );
   const selectRef = useRef<HTMLSelectElement>(null);
+
+  useEffect(() => {
+    getVersion().then(setVersion).catch(() => {});
+  }, []);
 
   useEffect(() => {
     shellListAvailable()
@@ -94,6 +100,10 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({
           style={{ ...inputStyle, marginBottom: 20 }}
         />
 
+        {version && (
+          <div style={versionInfoStyle}>sTerminal v{version}</div>
+        )}
+
         <div style={actionsStyle}>
           <button onClick={onCancel} style={btnStyle}>
             取消
@@ -155,6 +165,15 @@ const selectStyle: React.CSSProperties = {
   borderRadius: 4,
   fontSize: 13,
   outline: "none",
+};
+
+const versionInfoStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "#666",
+  textAlign: "center",
+  marginBottom: 16,
+  paddingTop: 8,
+  borderTop: "1px solid #333",
 };
 
 const actionsStyle: React.CSSProperties = {
