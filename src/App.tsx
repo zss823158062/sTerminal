@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import "./styles/global.css";
 import "./styles/terminal.css";
 import "./styles/tabbar.css";
@@ -9,6 +9,7 @@ import { LayoutManagerDrawer } from "./components/layout-manager/LayoutManagerDr
 import { AppSettingsDialog } from "./components/settings/AppSettingsDialog";
 import { CommandManagerDrawer } from "./components/commands/CommandManagerDrawer";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { Toast } from "./components/Toast";
 import { useLayoutStore } from "./store/layoutStore";
 import { useSettingsStore } from "./store/settingsStore";
@@ -16,6 +17,8 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { layoutUpdate } from "./ipc/layoutApi";
 import { collectLeaves } from "./utils/layoutTree";
 import { refitAll } from "./terminal/terminalInstances";
+import { checkForUpdate, type UpdateInfo } from "./utils/updateChecker";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import type { LayoutNode, AppSettings } from "./types/layout";
 
 interface ToastState {
@@ -49,6 +52,8 @@ export function App() {
   const [showCommandManager, setShowCommandManager] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [toasts, setToasts] = useState<ToastState[]>([]);
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
 
   // 布局名称递增计数
   const [layoutNameCounter, setLayoutNameCounter] = useState(1);
@@ -66,6 +71,33 @@ export function App() {
   const removeToast = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  // 启动后延迟 3s 自动检查更新（静默：有更新弹窗，无更新/失败不提示）
+  const autoCheckDone = useRef(false);
+  useEffect(() => {
+    if (autoCheckDone.current) return;
+    autoCheckDone.current = true;
+    const timer = setTimeout(async () => {
+      const info = await checkForUpdate();
+      if (info) {
+        setUpdateInfo(info);
+        setShowUpdateDialog(true);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // 手动检查更新（TitleBar 按钮）
+  const handleCheckUpdate = useCallback(async () => {
+    addToast("正在检查更新…", "info");
+    const info = await checkForUpdate();
+    if (info) {
+      setUpdateInfo(info);
+      setShowUpdateDialog(true);
+    } else if (info === null) {
+      addToast("当前已是最新版本", "success");
+    }
+  }, [addToast]);
 
   const handleSaveLayout = useCallback(async () => {
     if (activeLayoutId) {
@@ -166,6 +198,7 @@ export function App() {
         onOpenSettings={() => setShowSettings(true)}
         onOpenCommandManager={() => setShowCommandManager(true)}
         onOpenShortcuts={() => setShowShortcuts(true)}
+        onCheckUpdate={handleCheckUpdate}
         activeLayoutName={activeLayoutName}
       />
 
@@ -216,6 +249,21 @@ export function App() {
         onNewLayout={() => setShowSaveDialog(true)}
         refreshTrigger={layoutRefreshKey}
       />
+
+      {/* 更新弹窗 */}
+      {showUpdateDialog && updateInfo && (
+        <ConfirmDialog
+          title="发现新版本"
+          message={`当前版本：v${updateInfo.currentVersion}\n最新版本：v${updateInfo.latestVersion}\n\n是否前往下载页面？`}
+          kind="info"
+          confirmText="前往下载"
+          onConfirm={() => {
+            setShowUpdateDialog(false);
+            openUrl(updateInfo.releaseUrl);
+          }}
+          onCancel={() => setShowUpdateDialog(false)}
+        />
+      )}
 
       {/* Toast 通知 */}
       {toasts.map((t) => (

@@ -1,5 +1,6 @@
 import React from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { isMacOS } from "../../utils/platform";
 
 interface TitleBarProps {
@@ -7,6 +8,7 @@ interface TitleBarProps {
   onOpenSettings: () => void;
   onOpenCommandManager: () => void;
   onOpenShortcuts: () => void;
+  onCheckUpdate: () => void;
   activeLayoutName?: string | null;
 }
 
@@ -15,6 +17,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenSettings,
   onOpenCommandManager,
   onOpenShortcuts,
+  onCheckUpdate,
   activeLayoutName,
 }) => {
   const win = getCurrentWindow();
@@ -84,7 +87,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
         <button
           style={iconBtnStyle}
-          onClick={() => window.open("https://github.com/zss823158062/sTerminal", "_blank")}
+          onClick={onCheckUpdate}
+          title="检查更新"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+        </button>
+
+        <button
+          style={iconBtnStyle}
+          onClick={() => openUrl("https://github.com/zss823158062/sTerminal")}
           title="GitHub"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
