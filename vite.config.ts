@@ -18,4 +18,14 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "xterm": ["@xterm/xterm", "@xterm/addon-fit", "@xterm/addon-webgl"],
+          "react-vendor": ["react", "react-dom"],
+        },
+      },
+    },
+  },
 }));

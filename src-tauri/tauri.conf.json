@@ -1,7 +1,7 @@
 {
   "productName": "sTerminal",
   "version": "0.3.0",
-  "identifier": "com.sterminal.app",
+  "identifier": "com.senx.sterminal",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
