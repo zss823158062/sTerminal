@@ -252,6 +252,24 @@ export function acquireTerminal(
       // 等待设置从后端加载完成，确保能读到用户配置的默认 shell
       await settingsReady;
 
+      // 设置加载完成后，若字体配置与创建时不同则应用到 xterm
+      // （首个终端可能在 settings 加载前被创建，此时用的是默认字体）
+      const loadedSettings = useSettingsStore.getState().settings;
+      const effectiveFontFamily =
+        loadedSettings.fontFamily?.trim() || DEFAULT_FONT_FAMILY;
+      const effectiveFontSize = loadedSettings.fontSize || DEFAULT_FONT_SIZE;
+      const effectiveLineHeight =
+        loadedSettings.lineHeight || DEFAULT_LINE_HEIGHT;
+      if (term.options.fontFamily !== effectiveFontFamily) {
+        term.options.fontFamily = effectiveFontFamily;
+      }
+      if (term.options.fontSize !== effectiveFontSize) {
+        term.options.fontSize = effectiveFontSize;
+      }
+      if (term.options.lineHeight !== effectiveLineHeight) {
+        term.options.lineHeight = effectiveLineHeight;
+      }
+
       // await 恢复后 rAF 的 fit 可能尚未执行，手动 fit 确保尺寸准确
       try { fitAddon.fit(); } catch { /* 容器不可见时忽略 */ }
 
