@@ -111,8 +111,10 @@ sTerminal/
 ### 环境要求
 
 - [Node.js](https://nodejs.org/) >= 18
-- [Rust](https://www.rust-lang.org/tools/install) >= 1.77
+- [Rust](https://www.rust-lang.org/tools/install) >= 1.77，Windows 下使用 **MSVC 工具链**（`x86_64-pc-windows-msvc`）
 - [Tauri CLI](https://v2.tauri.app/start/prerequisites/) 2.x
+
+> **Windows 工具链说明**：本项目在 Windows 上仅测试并支持 MSVC 工具链。GNU 工具链需要额外打包 `WebView2Loader.dll`，当前仓库未包含该资源。切换工具链：`rustup default stable-x86_64-pc-windows-msvc`。
 
 ### 启动开发
 
