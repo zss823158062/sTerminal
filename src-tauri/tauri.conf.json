@@ -38,9 +38,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "resources/WebView2Loader.dll"
-    ],
     "windows": {
       "nsis": {
         "installerHooks": "nsis/hooks.nsi"
