@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { isMacOS } from "../../utils/platform";
+import { invoke } from "@tauri-apps/api/core";
+import { isMacOS, isWindows } from "../../utils/platform";
 
 interface TitleBarProps {
   onOpenLayoutManager: () => void;
@@ -23,17 +24,40 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 }) => {
   const win = getCurrentWindow();
   const [version, setVersion] = useState("");
+  const [isMaximized, setIsMaximized] = useState(false);
 
   useEffect(() => {
     getVersion().then(setVersion).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    win.isMaximized().then(setIsMaximized).catch(() => {});
+    win.onResized(() => {
+      win.isMaximized().then(setIsMaximized).catch(() => {});
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, [win]);
+
   const handleMinimize = () => win.minimize().catch(console.error);
   const handleMaximize = () => win.toggleMaximize().catch(console.error);
   const handleClose = () => win.close().catch(console.error);
 
+  // 右键标题栏：阻止 WebView2 默认菜单；Windows 下弹出原生系统菜单
+  const handleTitlebarContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isWindows) {
+      invoke("show_system_menu", { x: e.clientX, y: e.clientY }).catch(console.error);
+    }
+  };
+
   return (
-    <div style={titlebarStyle}>
+    <div style={titlebarStyle} onContextMenu={handleTitlebarContextMenu}>
       {/* 左侧：应用名 */}
       <div style={leftStyle}>
         <span style={appNameStyle}>sTerminal</span>
@@ -47,6 +71,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       <div
         style={dragRegionStyle}
         data-tauri-drag-region="true"
+        onContextMenu={handleTitlebarContextMenu}
       />
 
       {/* 右侧：按钮区 */}
@@ -115,30 +140,45 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
         {/* 窗口控制按钮 - macOS 使用原生红绿灯，无需自定义按钮 */}
         {!isMacOS && (
-          <>
-            <div style={separatorStyle} />
+          <div style={winBtnGroupStyle}>
             <button
               className="win-btn"
               onClick={handleMinimize}
               title="最小化"
+              aria-label="最小化"
             >
-              ─
+              <svg width="10" height="10" viewBox="0 0 10 10" shapeRendering="crispEdges">
+                <path d="M0 5 H10" stroke="currentColor" strokeWidth="1" fill="none" />
+              </svg>
             </button>
             <button
               className="win-btn"
               onClick={handleMaximize}
-              title="最大化/还原"
+              title={isMaximized ? "还原" : "最大化"}
+              aria-label={isMaximized ? "还原" : "最大化"}
             >
-              □
+              {isMaximized ? (
+                <svg width="10" height="10" viewBox="0 0 10 10" shapeRendering="crispEdges">
+                  <rect x="2.5" y="0.5" width="7" height="7" stroke="currentColor" strokeWidth="1" fill="none" />
+                  <rect x="0.5" y="2.5" width="7" height="7" stroke="currentColor" strokeWidth="1" fill="var(--bg-titlebar, #141414)" />
+                </svg>
+              ) : (
+                <svg width="10" height="10" viewBox="0 0 10 10" shapeRendering="crispEdges">
+                  <rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1" fill="none" />
+                </svg>
+              )}
             </button>
             <button
               className="win-btn win-btn--close"
               onClick={handleClose}
               title="关闭"
+              aria-label="关闭"
             >
-              ✕
+              <svg width="10" height="10" viewBox="0 0 10 10">
+                <path d="M0.5 0.5 L9.5 9.5 M9.5 0.5 L0.5 9.5" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="square" />
+              </svg>
             </button>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -219,11 +259,11 @@ const iconBtnStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const separatorStyle: React.CSSProperties = {
-  width: 1,
-  height: 20,
-  background: "var(--border, #333)",
-  margin: "0 4px",
+const winBtnGroupStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  height: "100%",
+  marginLeft: 8,
 };
 
 export default TitleBar;

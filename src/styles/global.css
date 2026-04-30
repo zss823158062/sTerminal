@@ -143,31 +143,50 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* 窗口控制按钮 */
+/* 窗口控制按钮（Windows 11 风格） */
 .win-btn {
   width: 46px;
   height: 36px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--text-primary);
+  border: none;
   border-radius: 0;
-  font-size: 12px;
   padding: 0;
+  margin: 0;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+  -webkit-app-region: no-drag;
+}
+
+.win-btn svg {
+  display: block;
+  pointer-events: none;
 }
 
 .win-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
-.win-btn--close {
-  color: var(--text-muted);
+.win-btn:active {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.win-btn:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .win-btn--close:hover {
   background: #c42b1c;
+  color: #fff;
+}
+
+.win-btn--close:active {
+  background: #a42218;
   color: #fff;
 }
 
