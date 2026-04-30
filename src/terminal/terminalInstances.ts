@@ -9,6 +9,7 @@
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
 import {
@@ -51,7 +52,9 @@ const DESTROY_DELAY = 5_000;
 export const DEFAULT_FONT_FAMILY =
   '"JetBrainsMono NFM", "JetBrainsMono NF", "Cascadia Code", "Fira Code", "JetBrains Mono", Consolas, "Courier New", monospace';
 export const DEFAULT_FONT_SIZE = 13;
-export const DEFAULT_LINE_HEIGHT = 1.2;
+// lineHeight 保持 1.0：WebGL 渲染器下非整数行高会导致每行 Y 坐标取整
+// 产生 ±1px 抖动（尤其在 Claude Code / Droid 这类 Ink/React TUI 重绘密集场景）
+export const DEFAULT_LINE_HEIGHT = 1.0;
 
 function notifyListeners(sessionId: string) {
   stateListeners.get(sessionId)?.forEach((fn) => fn());
@@ -64,7 +67,8 @@ export function refitAll() {
   for (const managed of cache.values()) {
     try {
       managed.fitAddon.fit();
-      // 强制刷新整个终端画布，修复 WebGL 渲染偏移
+      // 清纹理图集 + 强制刷新，修复 WebGL 渲染偏移与字形错乱
+      managed.terminal.clearTextureAtlas();
       managed.terminal.refresh(0, managed.terminal.rows - 1);
     } catch {
       // ignore
@@ -165,6 +169,17 @@ export function acquireTerminal(
 
   const fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
+
+  // Unicode 11：修正 CJK / Emoji / Nerd Fonts powerline 符号的宽度判断
+  // 避免 Claude Code / Droid 等 TUI 在重绘时出现输入栏左漂
+  try {
+    const unicode11Addon = new Unicode11Addon();
+    term.loadAddon(unicode11Addon);
+    term.unicode.activeVersion = "11";
+  } catch (err) {
+    console.warn("[terminal] Unicode11Addon load failed:", err);
+  }
+
   term.open(container);
 
   // 复制粘贴拦截（与 Windows Terminal 行为一致）
@@ -222,9 +237,13 @@ export function acquireTerminal(
   });
 
   // WebGL addon（降级安全）
+  let webglAddon: WebglAddon | undefined;
   try {
-    const webglAddon = new WebglAddon();
-    webglAddon.onContextLoss(() => webglAddon.dispose());
+    webglAddon = new WebglAddon();
+    webglAddon.onContextLoss(() => {
+      webglAddon?.dispose();
+      webglAddon = undefined;
+    });
     term.loadAddon(webglAddon);
   } catch {
     // Canvas fallback
@@ -336,8 +355,13 @@ export function acquireTerminal(
     terminalWrite(id, new TextEncoder().encode(data)).catch(console.error);
   });
 
-  // xterm resize → PTY resize
+  // xterm resize → PTY resize + 清纹理图集（避免 WebGL 字形缓存错乱）
   const resizeDisposable = term.onResize(({ cols, rows }) => {
+    try {
+      term.clearTextureAtlas();
+    } catch {
+      // ignore
+    }
     const id = managed.terminalId;
     if (!id) return;
     terminalResize(id, cols, rows).catch(console.error);
