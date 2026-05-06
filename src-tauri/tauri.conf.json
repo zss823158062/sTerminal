@@ -1,6 +1,6 @@
 {
   "productName": "sTerminal",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "identifier": "com.senx.sterminal",
   "build": {
     "beforeDevCommand": "npm run dev",
