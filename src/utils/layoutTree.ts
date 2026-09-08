@@ -214,7 +214,7 @@ export function rekeyLayoutTree(tree: LayoutNode): LayoutNode {
  */
 export function createSession(
   name: string,
-  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory" | "startupCommand">>
+  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory" | "startupCommand" | "transientStartupCommand">>
 ): TerminalSession {
   const { settings } = useSettingsStore.getState();
 
@@ -225,5 +225,29 @@ export function createSession(
     workingDirectory: config?.workingDirectory ?? (settings.defaultWorkingDirectory || ""),
     name,
     ...(config?.startupCommand ? { startupCommand: config.startupCommand } : {}),
+    ...(config?.transientStartupCommand
+      ? { transientStartupCommand: config.transientStartupCommand }
+      : {}),
   };
 }
+
+/**
+ * 剥离树中所有 session 的瞬时字段，用于持久化前的清理。
+ *
+ * transientStartupCommand 只对当前这次终端创建有意义（如 claude --resume），
+ * 写进布局会在下次加载时重复执行。
+ */
+export function stripTransient(tree: LayoutNode): LayoutNode {
+  if (tree.type === "terminal") {
+    return {
+      ...tree,
+      tabs: tree.tabs.map(({ transientStartupCommand: _omit, ...rest }) => rest),
+    };
+  }
+  return {
+    ...tree,
+    first: stripTransient(tree.first),
+    second: stripTransient(tree.second),
+  };
+}
+

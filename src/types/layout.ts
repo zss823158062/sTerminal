@@ -15,6 +15,14 @@ export interface TerminalSession {
   /** 终端创建后自动执行的命令 */
   startupCommand?: string;
   /**
+   * 仅本次运行有效的启动命令，保存布局时会被剥离。
+   *
+   * 用于「打开 Claude 历史会话」这类一次性动作：命令形如
+   * `claude --resume <sessionId>`，若写入持久化的 startupCommand，
+   * 下次加载布局会重新恢复一个早已过期的会话。
+   */
+  transientStartupCommand?: string;
+  /**
    * 是否为该控制台注入代理环境变量。
    * 代理地址取自全局设置 AppSettings.proxyUrl；未配置地址时开关无效果。
    */

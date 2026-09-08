@@ -210,3 +210,8 @@ input:focus,
 textarea:focus {
   border-color: var(--focus-ring);
 }
+
+/* Claude 会话列表项：默认透明，hover 与焦点沿用全局按钮反馈 */
+.claude-session-item {
+  background: transparent;
+}

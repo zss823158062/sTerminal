@@ -9,6 +9,7 @@ import { SaveLayoutDialog } from "./components/layout-manager/SaveLayoutDialog";
 import { LayoutManagerDrawer } from "./components/layout-manager/LayoutManagerDrawer";
 import { AppSettingsDialog } from "./components/settings/AppSettingsDialog";
 import { CommandManagerDrawer } from "./components/commands/CommandManagerDrawer";
+import { ClaudeSessionDialog } from "./components/claude/ClaudeSessionDialog";
 import { KeyboardShortcutsDialog } from "./components/KeyboardShortcutsDialog";
 import { UpdateDownloadDialog } from "./components/UpdateDownloadDialog";
 import { Toast } from "./components/Toast";
@@ -17,6 +18,7 @@ import { useSettingsStore } from "./store/settingsStore";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { layoutUpdate } from "./ipc/layoutApi";
 import { collectLeaves, findLeafById, rekeyLayoutTree } from "./utils/layoutTree";
+import { openClaudeSessionInNewTab } from "./utils/claudeResume";
 import {
   refitAll,
   getTerminal,
@@ -60,6 +62,11 @@ export function App() {
   const [toasts, setToasts] = useState<ToastState[]>([]);
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  /** Claude 会话弹窗的目标面板与其运行时 CWD；null 表示未打开 */
+  const [claudeTarget, setClaudeTarget] = useState<{
+    leafId: string;
+    cwd: string;
+  } | null>(null);
 
   // 布局名称递增计数
   const [layoutNameCounter, setLayoutNameCounter] = useState(1);
@@ -196,6 +203,38 @@ export function App() {
     return session.workingDirectory;
   }, [focusPanelId, layoutTree]);
 
+  /** TitleBar 入口：先定位焦点面板，再按其运行时 CWD 读取会话列表 */
+  const handleOpenClaudeSessions = useCallback(async () => {
+    if (!focusPanelId) {
+      addToast("请先点击一个终端面板", "warning");
+      return;
+    }
+    const cwd = await getFocusedCwd();
+    if (!cwd) {
+      addToast("无法解析当前面板的工作目录", "warning");
+      return;
+    }
+    setClaudeTarget({ leafId: focusPanelId, cwd });
+  }, [focusPanelId, getFocusedCwd, addToast]);
+
+  const handleSelectClaudeSession = useCallback(
+    (sessionId: string) => {
+      if (!claudeTarget) return;
+      const leaf = findLeafById(layoutTree, claudeTarget.leafId);
+      const session = leaf
+        ? leaf.tabs.find((t) => t.id === leaf.activeTabId) ?? leaf.tabs[0]
+        : undefined;
+      setClaudeTarget(null);
+      const created = openClaudeSessionInNewTab(claudeTarget.leafId, sessionId, {
+        workingDirectory: claudeTarget.cwd,
+        shellType: session?.shellType,
+        shellPath: session?.shellPath,
+      });
+      if (!created) addToast("会话 ID 格式异常，已取消", "error");
+    },
+    [claudeTarget, layoutTree, addToast]
+  );
+
   // 快捷键：操作当前焦点面板
   useKeyboardShortcuts({
     onSplitHorizontal: async () => {
@@ -251,6 +290,7 @@ export function App() {
         onOpenCommandManager={() => setShowCommandManager(true)}
         onOpenShortcuts={() => setShowShortcuts(true)}
         onCheckUpdate={handleCheckUpdate}
+        onOpenClaudeSessions={handleOpenClaudeSessions}
         activeLayoutName={activeLayoutName}
       />
 
@@ -301,6 +341,15 @@ export function App() {
         onNewLayout={() => setShowSaveDialog(true)}
         refreshTrigger={layoutRefreshKey}
       />
+
+      {/* Claude 会话弹窗（TitleBar 入口，作用于焦点面板） */}
+      {claudeTarget && (
+        <ClaudeSessionDialog
+          cwd={claudeTarget.cwd}
+          onSelect={handleSelectClaudeSession}
+          onClose={() => setClaudeTarget(null)}
+        />
+      )}
 
       {/* 更新弹窗 */}
       {showUpdateDialog && updateInfo && (

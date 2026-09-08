@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { LayoutNode, SavedLayout, SavedLayoutMeta, AppSettings } from "../types/layout";
+import { stripTransient } from "../utils/layoutTree";
 
 /**
  * 保存当前布局为命名布局记录
@@ -12,7 +13,7 @@ export async function layoutSave(
   name: string,
   tree: LayoutNode
 ): Promise<string> {
-  return invoke("layout_save", { name, tree });
+  return invoke("layout_save", { name, tree: stripTransient(tree) });
 }
 
 /**
@@ -44,7 +45,7 @@ export async function layoutUpdate(
   layoutId: string,
   tree: LayoutNode
 ): Promise<void> {
-  return invoke("layout_update", { layoutId, tree });
+  return invoke("layout_update", { layoutId, tree: stripTransient(tree) });
 }
 
 /**

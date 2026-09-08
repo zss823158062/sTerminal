@@ -12,3 +12,6 @@ pub mod fonts;
 
 /// 下载命令：download_update / open_file
 pub mod download;
+
+/// Claude Code 会话命令：claude_sessions_list / claude_active_sessions
+pub mod claude;

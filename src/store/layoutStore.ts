@@ -101,7 +101,12 @@ interface LayoutActions {
   /** 在指定 leaf 中新增一个 tab，自动激活，返回新 session ID */
   addTab: (
     leafId: string,
-    config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory">>
+    config?: Partial<
+      Pick<
+        TerminalSession,
+        "shellType" | "shellPath" | "workingDirectory" | "transientStartupCommand"
+      >
+    >
   ) => string;
 
   /** 关闭指定 tab；若最后一个则移除整个 leaf（仅当面板数 > 1） */

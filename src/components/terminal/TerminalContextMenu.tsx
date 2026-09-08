@@ -20,6 +20,8 @@ interface TerminalContextMenuProps {
   onDismiss: () => void;
   onConfirm?: (message: string) => Promise<boolean>;
   onPasteCommand?: (command: string) => void;
+  /** 打开当前目录的 Claude 历史会话列表 */
+  onOpenClaudeSessions?: () => void;
 }
 
 export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
@@ -36,6 +38,7 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
   onDismiss,
   onConfirm,
   onPasteCommand,
+  onOpenClaudeSessions,
 }) => {
   const commandGroups = useSettingsStore((s) => s.settings.commandGroups ?? []);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -144,6 +147,19 @@ export const TerminalContextMenu: React.FC<TerminalContextMenuProps> = ({
       >
         ⚙ 当前控制台设置
       </button>
+      {/* Claude 历史会话 */}
+      {onOpenClaudeSessions && (
+        <>
+          <div className="terminal-context-menu__separator" />
+          <button
+            className="terminal-context-menu__item"
+            onClick={() => handleAction(onOpenClaudeSessions)}
+            title="列出当前工作目录下的 Claude 历史会话"
+          >
+            ✦ Claude 会话
+          </button>
+        </>
+      )}
       {/* 常用命令（按分组） */}
       {onPasteCommand && (
         <>

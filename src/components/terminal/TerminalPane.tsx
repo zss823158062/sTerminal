@@ -4,12 +4,14 @@ import { useTerminal } from "../../hooks/useTerminal";
 import { PaneTabBar } from "../TabBar";
 import { TerminalContextMenu } from "./TerminalContextMenu";
 import { TerminalSettingsDialog } from "./TerminalSettingsDialog";
+import { ClaudeSessionDialog } from "../claude/ClaudeSessionDialog";
 import { DropOverlay, type DropZone } from "../DropOverlay";
 import { useLayoutStore } from "../../store/layoutStore";
 import { countLeaves } from "../../utils/layoutTree";
 import { getTerminal, rebuildAllAtlases, applyProxyToRunning } from "../../terminal/terminalInstances";
 import { terminalGetCwd, terminalWrite } from "../../ipc/terminalApi";
 import { getDragPayload, endDrag } from "../../utils/tabDragState";
+import { openClaudeSessionInNewTab } from "../../utils/claudeResume";
 import { useConfirm } from "../../hooks/useConfirm";
 
 const DRAG_MIME = "application/sterminal-tab";
@@ -41,7 +43,8 @@ const SingleTerminal: React.FC<{
       panelId: session.id,
       shellPath: session.shellPath,
       workingDirectory: session.workingDirectory,
-      startupCommand: session.startupCommand,
+      // 瞬时命令（如 claude --resume）优先，它只对本次创建有意义
+      startupCommand: session.transientStartupCommand ?? session.startupCommand,
       proxyEnabled: session.proxyEnabled,
       containerRef,
     });
@@ -139,6 +142,8 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ leaf }) => {
     (ContextMenuState & TerminalMethods) | null
   >(null);
   const [showSettings, setShowSettings] = useState(false);
+  /** 非 null 表示 Claude 会话弹窗已打开，值为解析出的运行时 CWD */
+  const [claudeCwd, setClaudeCwd] = useState<string | null>(null);
   const [dropZone, setDropZone] = useState<DropZone>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const paneRef = useRef<HTMLDivElement>(null);
@@ -210,6 +215,24 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ leaf }) => {
     const cwd = await getActiveCwd();
     splitPanel(leaf.id, "vertical", { workingDirectory: cwd });
   }, [leaf.id, splitPanel, getActiveCwd]);
+
+  /** 打开 Claude 会话列表：先解析运行时 CWD，再据此读取会话记录 */
+  const handleOpenClaudeSessions = useCallback(async () => {
+    setClaudeCwd(await getActiveCwd());
+  }, [getActiveCwd]);
+
+  const handleSelectClaudeSession = useCallback(
+    (sessionId: string) => {
+      const cwd = claudeCwd ?? activeSession.workingDirectory;
+      setClaudeCwd(null);
+      openClaudeSessionInNewTab(leaf.id, sessionId, {
+        workingDirectory: cwd,
+        shellType: activeSession.shellType,
+        shellPath: activeSession.shellPath,
+      });
+    },
+    [claudeCwd, leaf.id, activeSession]
+  );
 
   // ── 面板级 drop zone ──
 
@@ -346,6 +369,15 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ leaf }) => {
               terminalWrite(managed.terminalId, new TextEncoder().encode(command));
             }
           }}
+          onOpenClaudeSessions={handleOpenClaudeSessions}
+        />
+      )}
+      {claudeCwd !== null && (
+        <ClaudeSessionDialog
+          cwd={claudeCwd}
+          panelLabel={activeSession.name}
+          onSelect={handleSelectClaudeSession}
+          onClose={() => setClaudeCwd(null)}
         />
       )}
       <ConfirmPortal />

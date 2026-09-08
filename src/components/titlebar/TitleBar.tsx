@@ -11,6 +11,8 @@ interface TitleBarProps {
   onOpenCommandManager: () => void;
   onOpenShortcuts: () => void;
   onCheckUpdate: () => void;
+  /** 打开焦点面板的 Claude 会话列表 */
+  onOpenClaudeSessions: () => void;
   activeLayoutName?: string | null;
 }
 
@@ -20,6 +22,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onOpenCommandManager,
   onOpenShortcuts,
   onCheckUpdate,
+  onOpenClaudeSessions,
   activeLayoutName,
 }) => {
   const win = getCurrentWindow();
@@ -76,6 +79,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
       {/* 右侧：按钮区 */}
       <div style={rightStyle}>
+        <button
+          style={actionBtnStyle}
+          onClick={onOpenClaudeSessions}
+          title="Claude 会话（焦点面板当前目录）"
+        >
+          会话
+        </button>
         <button
           style={actionBtnStyle}
           onClick={onOpenSettings}
