@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
+use tauri::ipc::Channel;
 use tauri::AppHandle;
 
 use super::process::PtyProcess;
@@ -43,6 +44,7 @@ impl PtyManager {
         cols: u16,
         rows: u16,
         extra_env: HashMap<String, String>,
+        output: Channel,
         app: AppHandle,
     ) -> Result<(String, String), String> {
         let terminal_id = uuid::Uuid::new_v4().to_string();
@@ -74,6 +76,7 @@ impl PtyManager {
             cols,
             rows,
             extra_env,
+            output,
             app,
         )?;
 

@@ -6,11 +6,12 @@
  * 终端仅在 tab 关闭或显式 restart 时才销毁。
  */
 
-import { Terminal } from "@xterm/xterm";
+import { Terminal, type IWindowsPty } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { Channel } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -21,13 +22,12 @@ import {
   terminalResize,
   terminalKill,
   getStartupDir,
+  windowsBuildNumber,
 } from "../ipc/terminalApi";
 import { useSettingsStore, settingsReady } from "../store/settingsStore";
+import { noteOutput, noteTerminalExit, noteCommandDone, forgetSession } from "./activity";
 import { buildProxyEnv, buildProxySwitchCommand } from "../utils/proxyEnv";
-import type {
-  TerminalOutputEvent,
-  TerminalExitEvent,
-} from "../types/terminal";
+import type { TerminalExitEvent } from "../types/terminal";
 
 export interface ManagedTerminal {
   sessionId: string;
@@ -69,13 +69,45 @@ function notifyListeners(sessionId: string) {
   stateListeners.get(sessionId)?.forEach((fn) => fn());
 }
 
-// ── WebGL 纹理图集重建 ──
+// ── ConPTY 兼容信息 ──
 
-/** terminal → 待执行的补重绘 rAF 句柄 */
-const refreshRafs = new WeakMap<Terminal, number>();
+/** 全局只查一次；非 Windows 解析为 undefined */
+let windowsPtyInfo: Promise<IWindowsPty | undefined> | null = null;
 
 /**
- * 重建单个终端的 WebGL 纹理图集。
+ * 获取 xterm 的 windowsPty 配置。
+ *
+ * Windows 上 ConPTY 自己维护一份屏幕缓冲区，只把差量编码成 VT 发出来，
+ * xterm 必须按同样的规则处理 resize，两份屏幕状态才能保持一致。告知
+ * ConPTY 构建号后 xterm 会：增加行数时把新增行算进 scrollback（与 ConPTY
+ * 一致，否则行被替换导致内容丢失/错位）；build < 21376 时关闭 reflow。
+ */
+function getWindowsPty(): Promise<IWindowsPty | undefined> {
+  if (!windowsPtyInfo) {
+    windowsPtyInfo = windowsBuildNumber()
+      .then((buildNumber) =>
+        buildNumber === null
+          ? undefined
+          : { backend: "conpty" as const, buildNumber }
+      )
+      .catch(() => undefined);
+  }
+  return windowsPtyInfo;
+}
+
+// ── WebGL 纹理图集重建 ──
+
+/** 待执行的全量补重绘 rAF 句柄 */
+let refreshAllRaf: number | null = null;
+
+/**
+ * 重建所有终端的 WebGL 纹理图集。
+ *
+ * 只能全量重建，不能单独重建某一个终端：xterm 让字体/字号/主题/DPR 相同的
+ * 终端共用同一份图集（CharAtlasCache），clearTextureAtlas 清掉的是这份共享
+ * 图集，却只重置调用者自己的渲染模型。其他终端的顶点缓存仍指向旧纹理坐标，
+ * 而 _updateModel 会跳过内容没变的格子，refresh 也纠正不了——它们会采样到
+ * 别的终端新排进图集的字形，表现为碎字，直到 resize 清掉模型才恢复。
  *
  * 时序很讲究，两步都不能省、也不能换顺序：
  *
@@ -86,48 +118,31 @@ const refreshRafs = new WeakMap<Terminal, number>();
  * 2) refresh 必须【延后一帧】补上。清空图集后渲染器只重绘"脏行"，未变脏
  *    的行会从空图集采样导致文本整片消失（emoji 走独立纹理路径所以会残留
  *    下来）。等几何/DPI 在渲染层落定后再全量重绘才有效。
- */
-export function rebuildAtlas(term: Terminal) {
-  try {
-    term.clearTextureAtlas();
-  } catch {
-    // ignore
-  }
-
-  const pending = refreshRafs.get(term);
-  if (pending !== undefined) cancelAnimationFrame(pending);
-
-  const raf = requestAnimationFrame(() => {
-    refreshRafs.delete(term);
-    try {
-      term.refresh(0, term.rows - 1);
-    } catch {
-      // 终端可能已 dispose
-    }
-  });
-  refreshRafs.set(term, raf);
-}
-
-/** 取消某个终端挂起的补重绘（销毁前调用） */
-function cancelPendingRefresh(term: Terminal) {
-  const pending = refreshRafs.get(term);
-  if (pending !== undefined) {
-    cancelAnimationFrame(pending);
-    refreshRafs.delete(term);
-  }
-}
-
-/**
- * 重建所有活跃终端的纹理图集。
  *
- * 用于"尺寸没变但渲染上下文已失效"的场景——这类情况不会触发 onResize，
- * 因此必须由外部事件显式驱动，否则画面会一直坏着直到用户手动改尺寸。
- * 触发源见 installAtlasInvalidationListeners()。
+ * 触发源：onResize、WebGL 加载/丢失，以及 installAtlasInvalidationListeners()
+ * 覆盖的"尺寸没变但渲染上下文已失效"场景。
  */
 export function rebuildAllAtlases() {
   for (const managed of cache.values()) {
-    rebuildAtlas(managed.terminal);
+    try {
+      managed.terminal.clearTextureAtlas();
+    } catch {
+      // ignore
+    }
   }
+
+  if (refreshAllRaf !== null) cancelAnimationFrame(refreshAllRaf);
+  refreshAllRaf = requestAnimationFrame(() => {
+    refreshAllRaf = null;
+    // 回调时再遍历：期间销毁的终端已移出 cache，不会打到已 dispose 的实例
+    for (const managed of cache.values()) {
+      try {
+        managed.terminal.refresh(0, managed.terminal.rows - 1);
+      } catch {
+        // ignore
+      }
+    }
+  });
 }
 
 /** 图集失效监听是否已安装（防重复安装） */
@@ -262,7 +277,7 @@ export function refitAll() {
   for (const managed of cache.values()) {
     try {
       // 尺寸有变化时 fit() 会同步触发 onResize，图集重建与补重绘都在
-      // 那里统一处理（见 rebuildAtlas 的时序说明），此处不要重复清图集。
+      // 那里统一处理（见 rebuildAllAtlases 的时序说明），此处不要重复清图集。
       managed.fitAddon.fit();
       // 尺寸没变则 onResize 不会触发，但弹窗遮挡期间的画面可能已失效，
       // 仍需强制重绘一次（不清图集——字形尺寸没变，图集是有效的）。
@@ -397,6 +412,20 @@ export function acquireTerminal(
 
   term.open(container);
 
+  // OSC 133 shell 集成标记（由后端 shell/integration.rs 注入）。
+  // 只关心 D：命令结束。没有集成的 shell 不会产生该序列，活动检测会自动
+  // 回退到静止超时。必须在任何 PTY 输出写入之前注册。
+  const osc133Disposable = term.parser.registerOscHandler(133, (data) => {
+    if (data === "A") return true;
+    if (data.startsWith("D")) {
+      const code = Number.parseInt(data.slice(2), 10);
+      noteCommandDone(sessionId, Number.isNaN(code) ? 0 : code);
+      return true;
+    }
+    // B / C / P 等不处理，交给其他 handler
+    return false;
+  });
+
   // 复制粘贴拦截（与 Windows Terminal 行为一致）
   const doPaste = () => {
     navigator.clipboard
@@ -483,11 +512,11 @@ export function acquireTerminal(
             webglAddon?.dispose();
             webglAddon = undefined;
             // 降级到 DOM 渲染器后需重建图集，否则丢失瞬间的画面会残留
-            rebuildAtlas(term);
+            rebuildAllAtlases();
           });
           term.loadAddon(webglAddon);
-          // 切换渲染器后图集要重建
-          rebuildAtlas(term);
+          // 切换渲染器后图集要重建（全量：新终端可能接入了其他终端在用的共享图集）
+          rebuildAllAtlases();
         } catch {
           // WebGL 不可用 → 保持 DOM 渲染器
         }
@@ -511,13 +540,16 @@ export function acquireTerminal(
   cache.set(sessionId, managed);
 
   // ── 创建 PTY ──
-  let unlistenOutput: (() => void) | undefined;
   let unlistenExit: (() => void) | undefined;
 
   const init = async () => {
     try {
       // 等待设置从后端加载完成，确保能读到用户配置的默认 shell
       await settingsReady;
+
+      // ConPTY 兼容配置必须在 PTY 产生任何输出之前设好
+      const windowsPty = await getWindowsPty();
+      if (windowsPty) term.options.windowsPty = windowsPty;
 
       // 设置加载完成后，若字体配置与创建时不同则应用到 xterm
       // （首个终端可能在 settings 加载前被创建，此时用的是默认字体）
@@ -551,12 +583,23 @@ export function acquireTerminal(
       const proxyEnv = proxyEnabled ? buildProxyEnv(settings) : {};
       const hasProxyEnv = Object.keys(proxyEnv).length > 0;
 
+      // PTY 输出通道在 spawn 之前建好：读线程的第一包数据就有接收方，
+      // 不会像事件广播那样在 listen 注册完成前被丢弃
+      const output = new Channel<ArrayBuffer>();
+      output.onmessage = (data) => {
+        if (destroyed) return;
+        term.write(new Uint8Array(data));
+        // 后台活动检测：打未读标记，并在持续输出结束后提醒
+        noteOutput(sessionId);
+      };
+
       const { cols, rows } = term;
       const created = await terminalCreate(
         effectiveShellPath,
         effectiveWorkDir,
         cols,
         rows,
+        output,
         hasProxyEnv ? proxyEnv : undefined
       );
       const id = created.terminalId;
@@ -578,20 +621,13 @@ export function acquireTerminal(
         }, 300);
       }
 
-      unlistenOutput = await listen<TerminalOutputEvent>(
-        "terminal:output",
-        (event) => {
-          if (event.payload.terminalId !== id) return;
-          term.write(new Uint8Array(event.payload.data));
-        }
-      );
-
       unlistenExit = await listen<TerminalExitEvent>(
         "terminal:exit",
         (event) => {
           if (event.payload.terminalId !== id) return;
           managed.isAlive = false;
           managed.exitCode = event.payload.exitCode;
+          noteTerminalExit(sessionId);
           notifyListeners(sessionId);
         }
       );
@@ -614,7 +650,7 @@ export function acquireTerminal(
 
   // xterm resize → PTY resize + 重建纹理图集（避免 WebGL 字形缓存错乱）
   const resizeDisposable = term.onResize(({ cols, rows }) => {
-    rebuildAtlas(term);
+    rebuildAllAtlases();
     const id = managed.terminalId;
     if (!id) return;
     terminalResize(id, cols, rows).catch(console.error);
@@ -623,10 +659,10 @@ export function acquireTerminal(
   // 保存清理函数
   cleanupFns.set(sessionId, () => {
     destroyed = true;
-    cancelPendingRefresh(term);
+    forgetSession(sessionId);
+    osc133Disposable.dispose();
     dataDisposable.dispose();
     resizeDisposable.dispose();
-    if (unlistenOutput) unlistenOutput();
     if (unlistenExit) unlistenExit();
     const id = managed.terminalId;
     if (id) terminalKill(id).catch(console.error);

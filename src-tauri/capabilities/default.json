@@ -13,6 +13,7 @@
     "core:window:allow-close",
     "core:window:allow-set-title",
     "core:window:allow-is-maximized",
+    "core:window:allow-request-user-attention",
     "store:default",
     "dialog:default",
     "opener:default"

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, type Channel } from "@tauri-apps/api/core";
 import type { ShellInfo, TerminalCreated } from "../types/terminal";
 
 /**
@@ -8,6 +8,8 @@ import type { ShellInfo, TerminalCreated } from "../types/terminal";
  * @param workingDirectory 初始工作目录绝对路径
  * @param cols 列数，范围 [10, 512]
  * @param rows 行数，范围 [5, 256]
+ * @param onOutput PTY 输出通道（原始字节，按序到达）。须在调用前设好 onmessage，
+ *   PTY 一启动就会开始输出
  * @param env 追加到继承环境之上的变量（代理等），可省略
  * @returns 终端 ID + 实际启动的 shell 路径
  */
@@ -16,6 +18,7 @@ export async function terminalCreate(
   workingDirectory: string,
   cols: number,
   rows: number,
+  onOutput: Channel<ArrayBuffer>,
   env?: Record<string, string>
 ): Promise<TerminalCreated> {
   return invoke("terminal_create", {
@@ -24,6 +27,7 @@ export async function terminalCreate(
     cols,
     rows,
     env,
+    onOutput,
   });
 }
 
@@ -82,6 +86,15 @@ export async function terminalGetCwd(terminalId: string): Promise<string> {
  */
 export async function getStartupDir(): Promise<string | null> {
   return invoke("get_startup_dir");
+}
+
+/**
+ * 获取 Windows 构建号（如 26100），用于配置 xterm 的 ConPTY 兼容行为
+ *
+ * @returns 构建号；非 Windows 平台为 null
+ */
+export async function windowsBuildNumber(): Promise<number | null> {
+  return invoke("windows_build_number");
 }
 
 /**

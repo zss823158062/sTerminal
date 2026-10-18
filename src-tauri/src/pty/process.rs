@@ -2,15 +2,16 @@ use std::collections::HashMap;
 use std::io::Read;
 
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
+use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::Emitter;
 
-use crate::commands::terminal::{TerminalExitEvent, TerminalOutputEvent};
+use crate::commands::terminal::TerminalExitEvent;
 
 /// 单个 PTY 进程的封装
 ///
 /// 持有 PTY master 写句柄和子进程句柄，负责：
 /// - 接收写入数据并转发至 PTY master
-/// - 后台读取线程：读取 PTY 输出 → emit terminal:output 事件
+/// - 后台读取线程：读取 PTY 输出 → 发送到该终端专属的 output Channel
 /// - 进程退出检测 → emit terminal:exit 事件
 pub struct PtyProcess {
     /// 终端唯一 ID（UUID v4）
@@ -36,9 +37,13 @@ impl PtyProcess {
     /// 1. 使用 native_pty_system() 获取平台原生 PTY 系统
     /// 2. 打开 PTY pair（master + slave）
     /// 3. 用 shell_path + working_directory 启动子进程
-    /// 4. 启动后台读取线程，emit terminal:output / terminal:exit 事件
+    /// 4. 启动后台读取线程，输出写入 `output` Channel，退出时 emit terminal:exit
     ///
     /// `extra_env` 中的变量会追加到继承环境之上（如代理变量），同名时覆盖。
+    ///
+    /// `output` 由前端在调用前创建，因此读取线程的第一包数据就有接收方；
+    /// 若改用全局事件广播，前端 listen 注册完成前发出的输出会被直接丢弃，
+    /// ConPTY 此后只发增量，xterm 的屏幕状态会从第一帧起就与之不一致。
     pub fn new(
         terminal_id: String,
         shell_path: String,
@@ -46,6 +51,7 @@ impl PtyProcess {
         cols: u16,
         rows: u16,
         extra_env: HashMap<String, String>,
+        output: Channel,
         app_handle: tauri::AppHandle,
     ) -> Result<Self, String> {
         let pty_system = native_pty_system();
@@ -75,14 +81,38 @@ impl PtyProcess {
             cmd.env(key, value);
         }
 
-        // Unix 下以 login shell 启动，确保加载用户配置（~/.zshrc 等）
+        // 注入 OSC 133 shell 集成：不修改用户配置文件，只附加启动参数/环境变量。
+        // 不支持的 shell（如 cmd）返回 None，前端会自动回退到静止超时判断。
+        let integration = crate::shell::integration::setup(&shell_path);
+        if let Some(ref integ) = integration {
+            for (key, value) in &integ.envs {
+                cmd.env(key, value);
+            }
+        }
+
+        // Unix 下以 login shell 启动，确保加载用户配置（~/.zshrc 等）。
+        // bash 注入走 --rcfile，而登录模式会忽略它（实测 5.2），因此跳过 -l，
+        // 由注入脚本自行模拟登录时的加载顺序。
         #[cfg(not(target_os = "windows"))]
         {
             let lower = shell_path.to_lowercase();
-            if lower.ends_with("bash") || lower.ends_with("zsh") {
+            let bash_uses_rcfile = integration
+                .as_ref()
+                .is_some_and(|i| i.args.iter().any(|a| a == "--rcfile"));
+            if lower.ends_with("bash") {
+                if !bash_uses_rcfile {
+                    cmd.arg("-l");
+                }
+            } else if lower.ends_with("zsh") {
                 cmd.arg("-l");
             } else if lower.ends_with("fish") {
                 cmd.arg("--login");
+            }
+        }
+
+        if let Some(integ) = integration {
+            for arg in integ.args {
+                cmd.arg(arg);
             }
         }
 
@@ -110,7 +140,7 @@ impl PtyProcess {
         let tid = terminal_id.clone();
         let app = app_handle.clone();
         std::thread::spawn(move || {
-            Self::reader_thread(tid, reader, app);
+            Self::reader_thread(tid, reader, output, app);
         });
 
         Ok(PtyProcess {
@@ -124,11 +154,12 @@ impl PtyProcess {
         })
     }
 
-    /// 后台读取线程：持续读取 PTY master 输出，emit terminal:output 事件
-    /// 进程退出后 emit terminal:exit 事件
+    /// 后台读取线程：持续读取 PTY master 输出，以原始字节发送到 output Channel
+    /// （Channel 按序号保序，前端收到 ArrayBuffer）。进程退出后 emit terminal:exit 事件
     fn reader_thread(
         terminal_id: String,
         mut reader: Box<dyn std::io::Read + Send>,
+        output: Channel,
         app_handle: tauri::AppHandle,
     ) {
         let mut buf = [0u8; 4096];
@@ -139,12 +170,8 @@ impl PtyProcess {
                     break;
                 }
                 Ok(n) => {
-                    let payload = TerminalOutputEvent {
-                        terminal_id: terminal_id.clone(),
-                        data: buf[..n].to_vec(),
-                    };
-                    if let Err(e) = app_handle.emit("terminal:output", payload) {
-                        eprintln!("Failed to emit terminal:output for '{}': {}", terminal_id, e);
+                    if let Err(e) = output.send(InvokeResponseBody::Raw(buf[..n].to_vec())) {
+                        eprintln!("Failed to send output for '{}': {}", terminal_id, e);
                     }
                 }
                 Err(e) => {

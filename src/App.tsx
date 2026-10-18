@@ -26,6 +26,7 @@ import {
   rebuildAllAtlases,
 } from "./terminal/terminalInstances";
 import { terminalGetCwd } from "./ipc/terminalApi";
+import { installActivityTracking } from "./terminal/activity";
 import { checkForUpdate, type UpdateInfo } from "./utils/updateChecker";
 import type { LayoutNode, AppSettings } from "./types/layout";
 
@@ -87,6 +88,9 @@ export function App() {
 
   // WebGL 纹理图集失效监听（窗口焦点/可见性/DPI 变化等尺寸不变的场景）
   useEffect(() => installAtlasInvalidationListeners(), []);
+
+  // 后台活动标记 + 窗口失焦时的任务栏提醒
+  useEffect(() => installActivityTracking(), []);
 
   // 同步窗口标题：任务栏缩略图 / Alt+Tab 中显示当前布局名
   useEffect(() => {

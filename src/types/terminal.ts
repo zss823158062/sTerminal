@@ -51,16 +51,6 @@ export interface TerminalCreated {
 }
 
 /**
- * terminal:output 事件 Payload
- */
-export interface TerminalOutputEvent {
-  /** 产生输出的终端 ID（对应 PanelState.terminalId） */
-  terminalId: string;
-  /** PTY 输出的原始字节（JSON 序列化为 number 数组） */
-  data: number[];
-}
-
-/**
  * terminal:exit 事件 Payload
  */
 export interface TerminalExitEvent {

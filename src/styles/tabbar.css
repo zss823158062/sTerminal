@@ -78,6 +78,16 @@
   text-overflow: ellipsis;
 }
 
+/* 后台活动标记：该 tab 不在显示中，但有新输出或进程退出 */
+.tabbar__tab-activity {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-info);
+  box-shadow: 0 0 4px rgba(96, 165, 250, 0.6);
+  flex-shrink: 0;
+}
+
 /* 编辑态输入框 */
 .tabbar__tab-input {
   width: 100px;

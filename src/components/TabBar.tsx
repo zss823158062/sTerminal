@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useLayoutStore } from "../store/layoutStore";
 import { useSettingsStore } from "../store/settingsStore";
+import { useActivityStore } from "../store/activityStore";
 import type { TerminalLeaf } from "../types/layout";
 import {
   startDrag,
@@ -29,6 +30,8 @@ export function PaneTabBar({ leaf }: PaneTabBarProps) {
   const renamePanel = useLayoutStore((s) => s.renamePanel);
   const moveTab = useLayoutStore((s) => s.moveTab);
   const settings = useSettingsStore((s) => s.settings);
+  const unread = useActivityStore((s) => s.unread);
+  const clearUnread = useActivityStore((s) => s.clearUnread);
 
   const [editingTabId, setEditingTabId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -51,6 +54,11 @@ export function PaneTabBar({ leaf }: PaneTabBarProps) {
       inputRef.current.select();
     }
   }, [editingTabId]);
+
+  // 切到该 tab 即视为已读
+  useEffect(() => {
+    clearUnread(leaf.activeTabId);
+  }, [leaf.id, leaf.activeTabId, clearUnread]);
 
   const commitRename = useCallback(() => {
     if (editingTabId && editValue.trim()) {
@@ -248,6 +256,12 @@ export function PaneTabBar({ leaf }: PaneTabBarProps) {
                 />
               ) : (
                 <>
+                  {unread.has(tab.id) && !isActive && (
+                    <span
+                      className="tabbar__tab-activity"
+                      title="后台有新输出"
+                    />
+                  )}
                   <span className="tabbar__tab-name">
                     {tab.name ?? "控制台"}
                   </span>

@@ -1,6 +1,6 @@
 [package]
 name = "s-terminal"
-version = "0.5.0"
+version = "0.6.0"
 description = "sTerminal - 多面板本地终端模拟器"
 authors = ["sTerminal Team"]
 license = "MIT"

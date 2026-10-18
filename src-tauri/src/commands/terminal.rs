@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use tauri::ipc::Channel;
 use tauri::{AppHandle, State};
 
 use crate::pty::manager::PtyManager;
 
 // ============================================================
-// 数据结构定义（对应前端 ShellInfo / TerminalOutputEvent / TerminalExitEvent）
+// 数据结构定义（对应前端 ShellInfo / TerminalExitEvent）
 // ============================================================
 
 /// Shell 信息，对应前端 ShellInfo
@@ -23,16 +24,6 @@ pub struct ShellInfo {
     /// 是否为系统默认 Shell
     #[serde(rename = "isDefault")]
     pub is_default: bool,
-}
-
-/// terminal:output 事件 Payload，对应前端 TerminalOutputEvent
-#[derive(Debug, Clone, Serialize)]
-pub struct TerminalOutputEvent {
-    /// 产生输出的终端 ID
-    #[serde(rename = "terminalId")]
-    pub terminal_id: String,
-    /// PTY 输出字节数组（JSON 序列化为 number[]）
-    pub data: Vec<u8>,
 }
 
 /// terminal:exit 事件 Payload，对应前端 TerminalExitEvent
@@ -70,6 +61,7 @@ pub struct TerminalCreated {
 /// - `cols`: 终端列数，最小 10，最大 512
 /// - `rows`: 终端行数，最小 5，最大 256
 /// - `env`: 追加到继承环境之上的变量（代理等），可省略
+/// - `on_output`: 前端创建的输出通道，PTY 输出以原始字节写入
 ///
 /// # 返回
 /// - `Ok(TerminalCreated)`: 终端 ID + 实际使用的 shell 路径
@@ -81,6 +73,7 @@ pub async fn terminal_create(
     cols: u16,
     rows: u16,
     env: Option<HashMap<String, String>>,
+    on_output: Channel,
     app: AppHandle,
     state: State<'_, PtyManager>,
 ) -> Result<TerminalCreated, String> {
@@ -91,6 +84,7 @@ pub async fn terminal_create(
             cols,
             rows,
             env.unwrap_or_default(),
+            on_output,
             app,
         )
         .await?;
@@ -146,6 +140,56 @@ pub async fn terminal_get_cwd(
 #[tauri::command]
 pub fn get_startup_dir(state: State<'_, crate::StartupDir>) -> Option<String> {
     state.0.lock().ok().and_then(|mut dir| dir.take())
+}
+
+/// 获取 Windows 构建号（如 26100），非 Windows 返回 None
+///
+/// 前端据此设置 xterm 的 windowsPty，让 xterm 按 ConPTY 的行为处理
+/// resize 与换行。用 RtlGetVersion 而非 GetVersionEx：后者受应用清单的
+/// 兼容性声明影响，可能返回假版本号。
+#[tauri::command]
+pub fn windows_build_number() -> Option<u32> {
+    #[cfg(target_os = "windows")]
+    {
+        win_version::build_number()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        None
+    }
+}
+
+#[cfg(target_os = "windows")]
+mod win_version {
+    /// RTL_OSVERSIONINFOW（只读 build_number，其余字段仅用于对齐内存布局）
+    #[allow(dead_code)]
+    #[repr(C)]
+    struct OsVersionInfo {
+        size: u32,
+        major_version: u32,
+        minor_version: u32,
+        build_number: u32,
+        platform_id: u32,
+        csd_version: [u16; 128],
+    }
+
+    #[link(name = "ntdll")]
+    extern "system" {
+        fn RtlGetVersion(info: *mut OsVersionInfo) -> i32;
+    }
+
+    pub fn build_number() -> Option<u32> {
+        unsafe {
+            let mut info: OsVersionInfo = std::mem::zeroed();
+            info.size = std::mem::size_of::<OsVersionInfo>() as u32;
+            // NTSTATUS 0 = STATUS_SUCCESS
+            if RtlGetVersion(&mut info) == 0 {
+                Some(info.build_number)
+            } else {
+                None
+            }
+        }
+    }
 }
 
 /// 列出当前系统上可用的 Shell 可执行路径列表
