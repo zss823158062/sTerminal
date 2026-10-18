@@ -31,6 +31,8 @@
 - **应用设置** — 默认 Shell、GPU 硬件加速开关、单终端设置（Shell 类型、工作目录、启动命令）
 - **常用命令管理** — 分组管理常用命令，右键菜单一键粘贴到终端
 - **WebGL 渲染加速** — xterm.js WebGL 硬件加速渲染，支持渲染器平滑降级与图集动态重建
+- **后台活动提醒** — 后台 Tab 有新输出或进程退出时显示未读圆点；窗口失焦且一轮输出结束时闪烁任务栏（Windows）/ 弹跳 Dock（macOS）
+- **Shell 集成** — 通过 OSC 133 标记命令边界，精确判断命令结束与退出码（支持 PowerShell、bash、zsh、fish）
 - **自定义标题栏** — 沉浸式无边框窗口，实时同步当前布局名称与窗口状态
 - **应用内自动更新** — 内置新版本自动检测与一键下载更新
 - **全局快捷键** — 分割、关闭、复制面板、保存布局、面板切换等
@@ -68,6 +70,7 @@ st ..
 | `Ctrl+Shift+S` | 保存布局 |
 | `Ctrl+Shift+L` | 布局管理 |
 | `Ctrl+Shift+P` | 常用命令 |
+| `Ctrl+Shift+R` | 强制重绘终端（渲染异常时） |
 | `Ctrl+,` | 打开设置 |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | 切换焦点面板 |
 
@@ -95,7 +98,8 @@ sTerminal/
 │   │   ├── settings/             # 应用设置弹窗
 │   │   └── titlebar/             # 自定义标题栏
 │   ├── hooks/                    # useTerminal、useKeyboardShortcuts、useResize
-│   ├── store/                    # Zustand store（layoutStore、panelStore、settingsStore）
+│   ├── store/                    # Zustand store（layoutStore、panelStore、settingsStore、activityStore）
+│   ├── terminal/                 # xterm 实例缓存、纹理图集重建、后台活动检测
 │   ├── ipc/                      # Tauri IPC 封装（terminalApi、layoutApi）
 │   ├── types/                    # TypeScript 类型定义
 │   ├── utils/                    # 二叉树操作、Tab 拖拽状态机
@@ -104,7 +108,7 @@ sTerminal/
 │   ├── src/
 │   │   ├── commands/             # Tauri Commands（terminal_*、layout_*、settings_*）
 │   │   ├── pty/                  # PTY 进程管理（PtyManager、PtyProcess）
-│   │   ├── shell/                # 跨平台 Shell 检测
+│   │   ├── shell/                # 跨平台 Shell 检测、OSC 133 集成注入
 │   │   └── store/                # 布局/设置持久化（tauri-plugin-store）
 │   └── icons/                    # 应用图标（ICO、PNG、ICNS）
 ```
