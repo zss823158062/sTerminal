@@ -124,16 +124,6 @@ function psQuote(value: string): string {
 }
 
 /**
- * cmd 元字符转义。
- *
- * `set X=值` 里的值不能加引号（引号会被存进变量），因此只能逐字符转义
- * 那些会被 cmd 当成命令分隔/重定向的符号——代理地址带 & 时尤其重要。
- */
-function cmdEscape(value: string): string {
-  return value.replace(/[&|<>^()]/g, "^$&");
-}
-
-/**
  * 生成让运行中的 shell 立即启用/关闭代理的命令。
  *
  * 环境变量无法从外部注入到已启动的进程，只能让 shell 自己执行赋值。
@@ -168,8 +158,11 @@ export function buildProxySwitchCommand(
 
   switch (family) {
     case "cmd":
+      // 必须用 set "K=V"：裸写 `set K=V && ...` 会把 && 前的空格存进变量，
+      // 清除时变量值成了 " "（claude 等工具会报无效代理 URL）。
+      // 引号内的 & | < > 也不再被 cmd 解析，无需转义。
       body = keys
-        .map((k) => (enabled ? `set ${k}=${cmdEscape(env[k])}` : `set ${k}=`))
+        .map((k) => `set "${k}=${enabled ? env[k] : ""}"`)
         .join(" && ");
       clear = " && cls";
       break;
