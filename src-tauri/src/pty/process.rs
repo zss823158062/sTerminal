@@ -41,6 +41,9 @@ impl PtyProcess {
     ///
     /// `extra_env` 中的变量会追加到继承环境之上（如代理变量），同名时覆盖。
     ///
+    /// `elevated` 为 true 时经 Windows sudo（内联模式）以管理员身份启动 shell，
+    /// 提权后的进程挂在同一个 ConPTY 上，因此输入输出照常走本 PTY。
+    ///
     /// `output` 由前端在调用前创建，因此读取线程的第一包数据就有接收方；
     /// 若改用全局事件广播，前端 listen 注册完成前发出的输出会被直接丢弃，
     /// ConPTY 此后只发增量，xterm 的屏幕状态会从第一帧起就与之不一致。
@@ -51,6 +54,7 @@ impl PtyProcess {
         cols: u16,
         rows: u16,
         extra_env: HashMap<String, String>,
+        elevated: bool,
         output: Channel,
         app_handle: tauri::AppHandle,
     ) -> Result<Self, String> {
@@ -67,8 +71,22 @@ impl PtyProcess {
             .openpty(size)
             .map_err(|e| format!("Failed to open PTY: {}", e))?;
 
-        // 构造启动命令
-        let mut cmd = CommandBuilder::new(&shell_path);
+        // 构造启动命令。提权时真正的 shell 作为 sudo 的参数：
+        // --preserve-env 保留下面注入的 TERM / 代理变量，--chdir 保证初始目录
+        let mut cmd = if elevated {
+            #[cfg(target_os = "windows")]
+            {
+                let mut c = CommandBuilder::new(crate::shell::elevation::SUDO_PATH);
+                c.args(["--preserve-env", "--chdir", &working_directory, &shell_path]);
+                c
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                return Err("Elevated terminal is only supported on Windows".to_string());
+            }
+        } else {
+            CommandBuilder::new(&shell_path)
+        };
         cmd.cwd(&working_directory);
 
         // 设置 TERM 环境变量，确保 shell 正确识别终端能力（键绑定、颜色等）
@@ -83,7 +101,12 @@ impl PtyProcess {
 
         // 注入 OSC 133 shell 集成：不修改用户配置文件，只附加启动参数/环境变量。
         // 不支持的 shell（如 cmd）返回 None，前端会自动回退到静止超时判断。
-        let integration = crate::shell::integration::setup(&shell_path);
+        // 管理员终端跳过：注入脚本位于用户可写的临时目录，不能交给提权进程执行。
+        let integration = if elevated {
+            None
+        } else {
+            crate::shell::integration::setup(&shell_path)
+        };
         if let Some(ref integ) = integration {
             for (key, value) in &integ.envs {
                 cmd.env(key, value);

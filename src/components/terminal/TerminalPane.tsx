@@ -46,6 +46,7 @@ const SingleTerminal: React.FC<{
       // 瞬时命令（如 claude --resume）优先，它只对本次创建有意义
       startupCommand: session.transientStartupCommand ?? session.startupCommand,
       proxyEnabled: session.proxyEnabled,
+      elevated: session.elevated,
       containerRef,
     });
 
@@ -202,6 +203,7 @@ export const TerminalPane: React.FC<TerminalPaneProps> = ({ leaf }) => {
     duplicatePanel(leaf.id, "horizontal", {
       shellType: activeSession.shellType,
       shellPath: activeSession.shellPath,
+      elevated: activeSession.elevated,
       workingDirectory: cwd,
     });
   }, [activeSession, leaf.id, duplicatePanel, getActiveCwd]);

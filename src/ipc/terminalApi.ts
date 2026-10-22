@@ -11,6 +11,7 @@ import type { ShellInfo, TerminalCreated } from "../types/terminal";
  * @param onOutput PTY 输出通道（原始字节，按序到达）。须在调用前设好 onmessage，
  *   PTY 一启动就会开始输出
  * @param env 追加到继承环境之上的变量（代理等），可省略
+ * @param elevated 是否经 sudo 以管理员身份运行
  * @returns 终端 ID + 实际启动的 shell 路径
  */
 export async function terminalCreate(
@@ -19,7 +20,8 @@ export async function terminalCreate(
   cols: number,
   rows: number,
   onOutput: Channel<ArrayBuffer>,
-  env?: Record<string, string>
+  env?: Record<string, string>,
+  elevated?: boolean
 ): Promise<TerminalCreated> {
   return invoke("terminal_create", {
     shellPath,
@@ -27,6 +29,7 @@ export async function terminalCreate(
     cols,
     rows,
     env,
+    elevated,
     onOutput,
   });
 }
@@ -104,4 +107,21 @@ export async function windowsBuildNumber(): Promise<number | null> {
  */
 export async function shellListAvailable(): Promise<ShellInfo[]> {
   return invoke("shell_list_available");
+}
+
+/**
+ * 当前 sTerminal 进程是否以管理员身份运行
+ */
+export async function isElevated(): Promise<boolean> {
+  return invoke("is_elevated");
+}
+
+/**
+ * 以管理员身份重启 sTerminal（触发 UAC）。成功时当前进程直接退出；
+ * 用户在 UAC 中取消则 reject，当前进程保留。
+ *
+ * @param cwd 新实例的初始工作目录
+ */
+export async function restartAsAdmin(cwd?: string): Promise<void> {
+  return invoke("restart_as_admin", { cwd });
 }

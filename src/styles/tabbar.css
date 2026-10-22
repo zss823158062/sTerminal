@@ -178,6 +178,13 @@
   color: var(--color-warning);
 }
 
+/* 管理员终端：复用徽标外形，用错误色提醒当前为提权会话 */
+.tabbar__tab-proxy--admin {
+  border-color: var(--color-error);
+  background: rgba(248, 113, 113, 0.14);
+  color: var(--color-error);
+}
+
 /* 拖拽中的 tab */
 .tabbar__tab--dragging {
   opacity: 0.4;

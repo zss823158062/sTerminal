@@ -214,7 +214,7 @@ export function rekeyLayoutTree(tree: LayoutNode): LayoutNode {
  */
 export function createSession(
   name: string,
-  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory" | "startupCommand" | "transientStartupCommand">>
+  config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "elevated" | "workingDirectory" | "startupCommand" | "transientStartupCommand">>
 ): TerminalSession {
   const { settings } = useSettingsStore.getState();
 
@@ -224,6 +224,7 @@ export function createSession(
     shellPath: config?.shellPath ?? (settings.defaultShellPath || ""),
     workingDirectory: config?.workingDirectory ?? (settings.defaultWorkingDirectory || ""),
     name,
+    ...(config?.elevated ? { elevated: true } : {}),
     ...(config?.startupCommand ? { startupCommand: config.startupCommand } : {}),
     ...(config?.transientStartupCommand
       ? { transientStartupCommand: config.transientStartupCommand }

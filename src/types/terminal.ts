@@ -34,6 +34,8 @@ export interface ShellInfo {
   path: string;
   /** 是否为系统默认 Shell */
   isDefault: boolean;
+  /** 是否经 sudo 以管理员身份运行（同一 path 可能同时有普通和管理员两项） */
+  elevated: boolean;
 }
 
 /**

@@ -27,6 +27,8 @@ export interface TerminalSession {
    * 代理地址取自全局设置 AppSettings.proxyUrl；未配置地址时开关无效果。
    */
   proxyEnabled?: boolean;
+  /** 是否经 Windows sudo（内联模式）以管理员身份运行 shell */
+  elevated?: boolean;
 }
 
 /**

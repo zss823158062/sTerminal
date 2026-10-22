@@ -116,7 +116,8 @@ export const AppSettingsDialog: React.FC<AppSettingsDialogProps> = ({
   useEffect(() => {
     shellListAvailable()
       .then((list) => {
-        setShells(list);
+        // 管理员变体与普通项共用 type，且每开一个标签都弹 UAC，不适合作默认 Shell
+        setShells(list.filter((s) => !s.elevated));
         // 如果当前设置的 shell 不在列表中，选中第一个默认 shell
         if (defaultShell === "" || !list.some((s) => s.type === defaultShell)) {
           const defaultOne = list.find((s) => s.isDefault);

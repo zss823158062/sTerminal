@@ -314,13 +314,15 @@ export function getTerminal(
  * 如有缓存直接返回（取消 pending destroy）；否则新建 xterm + PTY。
  *
  * @param proxyEnabled 是否给该 PTY 注入代理环境变量（地址取自全局设置）
+ * @param elevated 是否经 sudo 以管理员身份运行
  */
 export function acquireTerminal(
   sessionId: string,
   shellPath: string,
   workingDirectory: string,
   startupCommand?: string,
-  proxyEnabled?: boolean
+  proxyEnabled?: boolean,
+  elevated?: boolean
 ): ManagedTerminal {
   // 取消待销毁定时器
   const timer = pendingDestroy.get(sessionId);
@@ -600,7 +602,8 @@ export function acquireTerminal(
         cols,
         rows,
         output,
-        hasProxyEnv ? proxyEnv : undefined
+        hasProxyEnv ? proxyEnv : undefined,
+        elevated
       );
       const id = created.terminalId;
       if (destroyed) {

@@ -14,6 +14,10 @@ interface TitleBarProps {
   /** 打开焦点面板的 Claude 会话列表 */
   onOpenClaudeSessions: () => void;
   activeLayoutName?: string | null;
+  /** 当前进程是否以管理员身份运行 */
+  isElevated?: boolean;
+  /** 以管理员身份重启；未提供时不显示入口 */
+  onRestartAsAdmin?: () => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = ({
@@ -24,6 +28,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   onCheckUpdate,
   onOpenClaudeSessions,
   activeLayoutName,
+  isElevated,
+  onRestartAsAdmin,
 }) => {
   const win = getCurrentWindow();
   const [version, setVersion] = useState("");
@@ -65,6 +71,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       <div style={leftStyle}>
         <span style={appNameStyle}>sTerminal</span>
         {version && <span style={versionStyle}>v{version}</span>}
+        {isElevated && (
+          <span style={adminBadgeStyle} title="sTerminal 正以管理员身份运行">
+            管理员
+          </span>
+        )}
         {activeLayoutName && (
           <span style={layoutNameStyle}>「{activeLayoutName}」</span>
         )}
@@ -79,6 +90,15 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
       {/* 右侧：按钮区 */}
       <div style={rightStyle}>
+        {!isElevated && onRestartAsAdmin && (
+          <button
+            style={actionBtnStyle}
+            onClick={onRestartAsAdmin}
+            title="以管理员身份重新启动 sTerminal"
+          >
+            提权
+          </button>
+        )}
         <button
           style={actionBtnStyle}
           onClick={onOpenClaudeSessions}
@@ -225,6 +245,16 @@ const versionStyle: React.CSSProperties = {
   fontSize: 11,
   color: "var(--text-muted, #666)",
   marginLeft: 6,
+};
+
+const adminBadgeStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "var(--color-error, #f87171)",
+  border: "1px solid var(--color-error, #f87171)",
+  borderRadius: 3,
+  padding: "0 4px",
+  marginLeft: 8,
+  lineHeight: "16px",
 };
 
 const layoutNameStyle: React.CSSProperties = {

@@ -24,6 +24,8 @@ pub struct ShellInfo {
     /// 是否为系统默认 Shell
     #[serde(rename = "isDefault")]
     pub is_default: bool,
+    /// 是否经 sudo 以管理员身份运行
+    pub elevated: bool,
 }
 
 /// terminal:exit 事件 Payload，对应前端 TerminalExitEvent
@@ -61,6 +63,7 @@ pub struct TerminalCreated {
 /// - `cols`: 终端列数，最小 10，最大 512
 /// - `rows`: 终端行数，最小 5，最大 256
 /// - `env`: 追加到继承环境之上的变量（代理等），可省略
+/// - `elevated`: 经 sudo 内联模式以管理员身份运行，可省略
 /// - `on_output`: 前端创建的输出通道，PTY 输出以原始字节写入
 ///
 /// # 返回
@@ -73,6 +76,7 @@ pub async fn terminal_create(
     cols: u16,
     rows: u16,
     env: Option<HashMap<String, String>>,
+    elevated: Option<bool>,
     on_output: Channel,
     app: AppHandle,
     state: State<'_, PtyManager>,
@@ -84,6 +88,7 @@ pub async fn terminal_create(
             cols,
             rows,
             env.unwrap_or_default(),
+            elevated.unwrap_or(false),
             on_output,
             app,
         )
@@ -204,6 +209,31 @@ pub async fn shell_list_available() -> Result<Vec<ShellInfo>, String> {
             display_name: s.display_name,
             path: s.path,
             is_default: s.is_default,
+            elevated: s.elevated,
         })
         .collect())
+}
+
+/// 当前进程是否以管理员身份运行
+#[tauri::command]
+pub fn is_elevated() -> bool {
+    crate::shell::elevation::is_elevated()
+}
+
+/// 以管理员身份重启 sTerminal：UAC 确认后启动新实例并退出当前进程
+///
+/// `cwd` 作为新实例的初始目录。用户在 UAC 中取消时返回 Err，当前进程保留。
+#[tauri::command]
+pub fn restart_as_admin(cwd: Option<String>, app: AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        crate::shell::elevation::relaunch_as_admin(cwd.as_deref())?;
+        app.exit(0);
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (cwd, app);
+        Err("仅 Windows 支持以管理员身份重启".to_string())
+    }
 }

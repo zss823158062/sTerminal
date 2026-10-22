@@ -51,7 +51,7 @@ interface LayoutActions {
   splitPanel: (
     panelId: string,
     direction: "horizontal" | "vertical",
-    config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory">>
+    config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "elevated" | "workingDirectory">>
   ) => string;
 
   /**
@@ -71,7 +71,7 @@ interface LayoutActions {
   duplicatePanel: (
     panelId: string,
     direction: "horizontal" | "vertical",
-    config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "workingDirectory">>
+    config?: Partial<Pick<TerminalSession, "shellType" | "shellPath" | "elevated" | "workingDirectory">>
   ) => string;
 
   /**
@@ -104,7 +104,7 @@ interface LayoutActions {
     config?: Partial<
       Pick<
         TerminalSession,
-        "shellType" | "shellPath" | "workingDirectory" | "transientStartupCommand"
+        "shellType" | "shellPath" | "elevated" | "workingDirectory" | "transientStartupCommand"
       >
     >
   ) => string;

@@ -8,6 +8,7 @@ use tauri::Manager;
 use commands::terminal::{
     terminal_create, terminal_kill, terminal_resize, terminal_write, terminal_get_cwd,
     shell_list_available, get_startup_dir, windows_build_number,
+    is_elevated, restart_as_admin,
 };
 use commands::layout::{
     layout_save, layout_list, layout_load, layout_update, layout_delete, layout_rename,
@@ -85,6 +86,8 @@ pub fn run() {
             shell_list_available,
             get_startup_dir,
             windows_build_number,
+            is_elevated,
+            restart_as_admin,
             // 布局持久化命令
             layout_save,
             layout_list,

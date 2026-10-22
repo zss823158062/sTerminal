@@ -15,6 +15,8 @@ interface UseTerminalOptions {
   startupCommand?: string;
   /** 是否给 PTY 注入代理环境变量；仅在创建/重启时生效 */
   proxyEnabled?: boolean;
+  /** 是否经 sudo 以管理员身份运行；仅在创建/重启时生效 */
+  elevated?: boolean;
   containerRef: RefObject<HTMLDivElement>;
 }
 
@@ -34,6 +36,7 @@ export function useTerminal({
   workingDirectory,
   startupCommand,
   proxyEnabled,
+  elevated,
   containerRef,
 }: UseTerminalOptions): UseTerminalReturn {
   const [, forceUpdate] = useState(0);
@@ -49,7 +52,8 @@ export function useTerminal({
       shellPath,
       workingDirectory,
       startupCommand,
-      proxyEnabled
+      proxyEnabled,
+      elevated
     );
 
     // 把持久容器挂到当前 host

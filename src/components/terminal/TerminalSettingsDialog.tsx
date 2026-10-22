@@ -33,13 +33,16 @@ export const TerminalSettingsDialog: React.FC<TerminalSettingsDialogProps> = ({
   useEffect(() => {
     shellListAvailable().then((list) => {
       setShells(list);
-      // 匹配当前 session 的 shell
+      // 匹配当前 session 的 shell；同一 path 可能有普通/管理员两项，需同时比对 elevated
+      const elevated = !!session.elevated;
       const idx = list.findIndex(
-        (s) => s.path === session.shellPath || s.type === session.shellType
+        (s) =>
+          s.elevated === elevated &&
+          (s.path === session.shellPath || s.type === session.shellType)
       );
       setSelectedShellIdx(idx >= 0 ? idx : 0);
     }).catch(console.error);
-  }, [session.shellPath, session.shellType]);
+  }, [session.shellPath, session.shellType, session.elevated]);
 
   // ESC 关闭
   useEffect(() => {
@@ -59,9 +62,15 @@ export const TerminalSettingsDialog: React.FC<TerminalSettingsDialogProps> = ({
     const config: Partial<TerminalSession> = {};
     const shell = shells[selectedShellIdx];
 
-    if (shell && (shell.type !== session.shellType || shell.path !== session.shellPath)) {
+    if (
+      shell &&
+      (shell.type !== session.shellType ||
+        shell.path !== session.shellPath ||
+        shell.elevated !== !!session.elevated)
+    ) {
       config.shellType = shell.type;
       config.shellPath = shell.path;
+      config.elevated = shell.elevated || undefined;
     }
     if (workingDirectory !== session.workingDirectory) {
       config.workingDirectory = workingDirectory;
@@ -96,7 +105,7 @@ export const TerminalSettingsDialog: React.FC<TerminalSettingsDialogProps> = ({
           style={selectStyle}
         >
           {shells.map((s, i) => (
-            <option key={s.path} value={i}>
+            <option key={`${s.path}|${s.elevated}`} value={i}>
               {s.displayName}{s.isDefault ? " (默认)" : ""}
             </option>
           ))}

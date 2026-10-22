@@ -118,6 +118,7 @@ export function PaneTabBar({ leaf }: PaneTabBarProps) {
     addTab(leaf.id, {
       shellType: tab.shellType,
       shellPath: tab.shellPath,
+      elevated: tab.elevated,
       workingDirectory: cwd,
     });
   }, [leaf.id, leaf.tabs, addTab, getTabCwd]);
@@ -265,6 +266,14 @@ export function PaneTabBar({ leaf }: PaneTabBarProps) {
                   <span className="tabbar__tab-name">
                     {tab.name ?? "控制台"}
                   </span>
+                  {tab.elevated && (
+                    <span
+                      className="tabbar__tab-proxy tabbar__tab-proxy--admin"
+                      title="管理员终端（经 sudo 提权）"
+                    >
+                      A
+                    </span>
+                  )}
                   {tab.proxyEnabled && (
                     <span
                       className={`tabbar__tab-proxy ${

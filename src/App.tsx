@@ -25,7 +25,9 @@ import {
   installAtlasInvalidationListeners,
   rebuildAllAtlases,
 } from "./terminal/terminalInstances";
-import { terminalGetCwd } from "./ipc/terminalApi";
+import { terminalGetCwd, isElevated, restartAsAdmin } from "./ipc/terminalApi";
+import { useConfirm } from "./hooks/useConfirm";
+import { isWindows } from "./utils/platform";
 import { installActivityTracking } from "./terminal/activity";
 import { checkForUpdate, type UpdateInfo } from "./utils/updateChecker";
 import type { LayoutNode, AppSettings } from "./types/layout";
@@ -68,6 +70,10 @@ export function App() {
     leafId: string;
     cwd: string;
   } | null>(null);
+
+  /** 当前进程是否以管理员身份运行（仅 Windows 检测） */
+  const [elevated, setElevated] = useState(false);
+  const [confirm, ConfirmPortal] = useConfirm();
 
   // 布局名称递增计数
   const [layoutNameCounter, setLayoutNameCounter] = useState(1);
@@ -207,6 +213,26 @@ export function App() {
     return session.workingDirectory;
   }, [focusPanelId, layoutTree]);
 
+  useEffect(() => {
+    if (isWindows) isElevated().then(setElevated).catch(console.error);
+  }, []);
+
+  /** 以管理员身份重启：新实例从焦点面板的当前目录启动 */
+  const handleRestartAsAdmin = useCallback(async () => {
+    const ok = await confirm({
+      title: "以管理员身份重新启动",
+      message: layoutDirty
+        ? "当前所有终端会话将关闭，且布局有未保存的修改。确认继续？"
+        : "当前所有终端会话将关闭。确认继续？",
+      confirmText: "重新启动",
+      kind: "warning",
+    });
+    if (!ok) return;
+    const cwd = await getFocusedCwd();
+    // 成功时当前进程由后端直接退出，走到 catch 说明 UAC 被取消或启动失败
+    restartAsAdmin(cwd || undefined).catch((e) => addToast(String(e), "warning"));
+  }, [confirm, layoutDirty, getFocusedCwd, addToast]);
+
   /** TitleBar 入口：先定位焦点面板，再按其运行时 CWD 读取会话列表 */
   const handleOpenClaudeSessions = useCallback(async () => {
     if (!focusPanelId) {
@@ -296,6 +322,8 @@ export function App() {
         onCheckUpdate={handleCheckUpdate}
         onOpenClaudeSessions={handleOpenClaudeSessions}
         activeLayoutName={activeLayoutName}
+        isElevated={elevated}
+        onRestartAsAdmin={isWindows ? handleRestartAsAdmin : undefined}
       />
 
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
@@ -362,6 +390,8 @@ export function App() {
           onClose={() => setShowUpdateDialog(false)}
         />
       )}
+
+      <ConfirmPortal />
 
       {/* Toast 通知 */}
       {toasts.map((t) => (

@@ -9,6 +9,8 @@ pub struct DetectedShell {
     pub path: String,
     /// 是否为系统默认 Shell
     pub is_default: bool,
+    /// 是否经 sudo 以管理员身份运行
+    pub elevated: bool,
 }
 
 /// 按平台探测当前系统可用的 Shell 列表
@@ -74,6 +76,7 @@ fn detect_windows_shells(shells: &mut Vec<DetectedShell>) {
                 display_name: display_name.to_string(),
                 path: path.to_string(),
                 is_default: *is_default,
+                elevated: false,
             });
         }
     }
@@ -81,6 +84,22 @@ fn detect_windows_shells(shells: &mut Vec<DetectedShell>) {
     // 若 PowerShell 5.1 不存在（极罕见），则将第一个探测到的设为默认
     if !shells.is_empty() && !shells.iter().any(|s| s.is_default) {
         shells[0].is_default = true;
+    }
+
+    // sudo 内联模式可用时追加管理员变体（Git Bash 提权意义不大，不列出）；
+    // 本进程已提权时所有终端本就是管理员，无需变体
+    if super::elevation::sudo_inline_available() && !super::elevation::is_elevated() {
+        let admin: Vec<DetectedShell> = shells
+            .iter()
+            .filter(|s| matches!(s.shell_type.as_str(), "powershell" | "pwsh" | "cmd"))
+            .map(|s| DetectedShell {
+                display_name: format!("{}（管理员）", s.display_name),
+                is_default: false,
+                elevated: true,
+                ..s.clone()
+            })
+            .collect();
+        shells.extend(admin);
     }
 }
 
@@ -105,6 +124,7 @@ fn detect_unix_shells(shells: &mut Vec<DetectedShell>) {
                 display_name: display_name.to_string(),
                 path: path.to_string(),
                 is_default: false,
+                elevated: false,
             });
         }
     }

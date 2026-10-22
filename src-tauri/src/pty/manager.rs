@@ -44,6 +44,7 @@ impl PtyManager {
         cols: u16,
         rows: u16,
         extra_env: HashMap<String, String>,
+        elevated: bool,
         output: Channel,
         app: AppHandle,
     ) -> Result<(String, String), String> {
@@ -76,6 +77,7 @@ impl PtyManager {
             cols,
             rows,
             extra_env,
+            elevated,
             output,
             app,
         )?;
